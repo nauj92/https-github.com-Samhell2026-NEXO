@@ -1,0 +1,282 @@
+import { useEffect, useState } from "react";
+import api from "../api";
+import Layout from "../components/Layout";
+
+export default function Clientes() {
+  const [clientes, setClientes] = useState([]);
+  const [error, setError] = useState("");
+  const [cargando, setCargando] = useState(true);
+  const [mostrarForm, setMostrarForm] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [editandoId, setEditandoId] = useState(null);
+
+  const [form, setForm] = useState({
+    nombre: "",
+    tipo_documento: "CC",
+    numero_documento: "",
+    telefono: "",
+    email: "",
+    direccion: "",
+  });
+
+  const cargarClientes = () => {
+    setCargando(true);
+    api
+      .get("/clientes/")
+      .then((response) => setClientes(response.data))
+      .catch(() => setError("No se pudieron cargar los clientes."))
+      .finally(() => setCargando(false));
+  };
+
+  useEffect(() => {
+    cargarClientes();
+  }, []);
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleNuevoClick = () => {
+    setForm({ nombre: "", tipo_documento: "CC", numero_documento: "", telefono: "", email: "", direccion: "" });
+    setEditandoId(null);
+    setFormError("");
+    setMostrarForm(true);
+  };
+
+  const handleEditar = (cli) => {
+    setForm({
+      nombre: cli.nombre,
+      tipo_documento: cli.tipo_documento,
+      numero_documento: cli.numero_documento,
+      telefono: cli.telefono || "",
+      email: cli.email || "",
+      direccion: cli.direccion || "",
+    });
+    setEditandoId(cli.id);
+    setFormError("");
+    setMostrarForm(true);
+  };
+
+  const handleCerrarModal = () => {
+    setMostrarForm(false);
+    setEditandoId(null);
+    setFormError("");
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setFormError("");
+    setGuardando(true);
+    try {
+      if (editandoId) {
+        await api.patch(`/clientes/${editandoId}/`, form);
+      } else {
+        await api.post("/clientes/", form);
+      }
+      setMostrarForm(false);
+      setEditandoId(null);
+      setForm({ nombre: "", tipo_documento: "CC", numero_documento: "", telefono: "", email: "", direccion: "" });
+      cargarClientes();
+    } catch (err) {
+      setFormError("No se pudo guardar el cliente. Revisa que el documento no esté repetido.");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const handleEliminar = async (id) => {
+    if (!window.confirm("¿Seguro que quieres eliminar este cliente?")) return;
+    try {
+      await api.delete(`/clientes/${id}/`);
+      cargarClientes();
+    } catch (err) {
+      alert("No se pudo eliminar el cliente.");
+    }
+  };
+
+  return (
+    <Layout>
+      <div style={{ minHeight: "100vh", background: "#f4f7fb", fontFamily: "sans-serif" }}>
+        <header
+          style={{
+            background: "white",
+            padding: "16px 32px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            borderBottom: "1px solid #e9edf2",
+          }}
+        >
+          <div style={{ fontSize: "20px", fontWeight: "bold" }}>👥 Clientes</div>
+          <button
+            onClick={handleNuevoClick}
+            style={{
+              background: "#0a1a2b",
+              color: "white",
+              border: "none",
+              padding: "10px 20px",
+              borderRadius: "30px",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            + Nuevo Cliente
+          </button>
+        </header>
+
+        <main style={{ padding: "32px" }}>
+          {error && <p style={{ color: "#c73a3a" }}>{error}</p>}
+          {cargando && <p>Cargando clientes...</p>}
+
+          {!cargando && !error && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(240px,1fr))",
+                gap: "16px",
+              }}
+            >
+              {clientes.length === 0 && (
+                <p style={{ color: "#6b7f96" }}>No hay clientes registrados.</p>
+              )}
+              {clientes.map((cli) => (
+                <div
+                  key={cli.id}
+                  style={{
+                    background: "white",
+                    padding: "16px",
+                    borderRadius: "12px",
+                    border: "1px solid #eef2f6",
+                  }}
+                >
+                  <strong>{cli.nombre}</strong>
+                  <br />
+                  <span style={{ fontSize: "13px", color: "#6b7f96" }}>
+                    {cli.tipo_documento}: {cli.numero_documento}
+                  </span>
+                  <br />
+                  {cli.telefono && (
+                    <span style={{ fontSize: "13px", color: "#6b7f96" }}>
+                      📞 {cli.telefono}
+                    </span>
+                  )}
+                  <div style={{ marginTop: "10px" }}>
+                    <span
+                      onClick={() => handleEditar(cli)}
+                      style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px", fontSize: "13px" }}
+                    >
+                      Editar
+                    </span>
+                    <span
+                      onClick={() => handleEliminar(cli.id)}
+                      style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", fontSize: "13px" }}
+                    >
+                      Eliminar
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </main>
+
+        {/* Modal de creación/edición */}
+        {mostrarForm && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(10,26,43,0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 100,
+            }}
+            onClick={handleCerrarModal}
+          >
+            <form
+              onClick={(e) => e.stopPropagation()}
+              onSubmit={handleSubmit}
+              style={{
+                background: "white",
+                borderRadius: "20px",
+                padding: "28px",
+                width: "420px",
+                maxHeight: "85vh",
+                overflowY: "auto",
+              }}
+            >
+              <h2 style={{ marginBottom: "16px" }}>{editandoId ? "✏️ Editar Cliente" : "+ Nuevo Cliente"}</h2>
+              {formError && <p style={{ color: "#c73a3a", fontSize: "13px" }}>{formError}</p>}
+
+              <Campo label="Nombre completo">
+                <input name="nombre" value={form.nombre} onChange={handleChange} required style={inputStyle} />
+              </Campo>
+
+              <Campo label="Tipo de documento">
+                <select name="tipo_documento" value={form.tipo_documento} onChange={handleChange} style={inputStyle}>
+                  <option value="CC">Cédula de Ciudadanía</option>
+                  <option value="CE">Cédula de Extranjería</option>
+                  <option value="NIT">NIT</option>
+                  <option value="PA">Pasaporte</option>
+                </select>
+              </Campo>
+
+              <Campo label="Número de documento">
+                <input name="numero_documento" value={form.numero_documento} onChange={handleChange} required style={inputStyle} />
+              </Campo>
+
+              <Campo label="Teléfono">
+                <input name="telefono" value={form.telefono} onChange={handleChange} style={inputStyle} />
+              </Campo>
+
+              <Campo label="Email">
+                <input type="email" name="email" value={form.email} onChange={handleChange} style={inputStyle} />
+              </Campo>
+
+              <Campo label="Dirección">
+                <input name="direccion" value={form.direccion} onChange={handleChange} style={inputStyle} />
+              </Campo>
+
+              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+                <button
+                  type="button"
+                  onClick={handleCerrarModal}
+                  style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #d0d9e3", background: "white", cursor: "pointer" }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={guardando}
+                  style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer" }}
+                >
+                  {guardando ? "Guardando..." : "Guardar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+    </Layout>
+  );
+}
+
+function Campo({ label, children }) {
+  return (
+    <div style={{ marginBottom: "14px" }}>
+      <label style={{ fontSize: "13px", color: "#6b7f96", display: "block", marginBottom: "4px" }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+const inputStyle = {
+  width: "100%",
+  padding: "8px 10px",
+  borderRadius: "8px",
+  border: "1px solid #d0d9e3",
+  fontSize: "14px",
+  boxSizing: "border-box",
+};

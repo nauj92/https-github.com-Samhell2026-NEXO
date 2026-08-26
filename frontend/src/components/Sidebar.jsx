@@ -6,6 +6,7 @@ const navItems = [
   { to: "/audiencias", label: "Audiencias", icon: "⚖️" },
   { to: "/clientes", label: "Clientes", icon: "👥" },
   { to: "/facturacion", label: "Facturación", icon: "💰" },
+   { to: "/reportes", label: "Reportes", icon: "🚩" },
 ];
 
 export default function Sidebar() {

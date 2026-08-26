@@ -24,7 +24,7 @@ export default function Login() {
   return (
     <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", background: "#0a1a2b" }}>
       <form onSubmit={handleSubmit} style={{ background: "white", padding: "40px", borderRadius: "16px", width: "320px" }}>
-        <h2 style={{ marginBottom: "24px", color: "#0a1a2b" }}>⚖️ Lex·ERP</h2>
+        <h2 style={{ marginBottom: "24px", color: "#0a1a2b" }}>⚖️ ERP</h2>
         {error && <p style={{ color: "#c73a3a", fontSize: "14px" }}>{error}</p>}
         <div style={{ marginBottom: "16px" }}>
           <label>Usuario</label>
