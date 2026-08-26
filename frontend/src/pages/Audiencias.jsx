@@ -11,6 +11,7 @@ export default function Audiencias() {
   const [guardando, setGuardando] = useState(false);
   const [formError, setFormError] = useState("");
   const [editandoId, setEditandoId] = useState(null);
+  const [detalle, setDetalle] = useState(null);
 
   const [form, setForm] = useState({
     expediente: "",
@@ -170,6 +171,12 @@ export default function Audiencias() {
                   <div>{aud.lugar}</div>
                   <div>
                     <span
+                      onClick={() => setDetalle(aud)}
+                      style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}
+                    >
+                      Ver
+                    </span>
+                    <span
                       onClick={() => handleEditar(aud)}
                       style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}
                     >
@@ -271,8 +278,57 @@ export default function Audiencias() {
             </form>
           </div>
         )}
+
+        {/* Modal de detalle */}
+        {detalle && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(10,26,43,0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 100,
+            }}
+            onClick={() => setDetalle(null)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "white",
+                borderRadius: "20px",
+                padding: "28px",
+                width: "420px",
+                maxHeight: "85vh",
+                overflowY: "auto",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                <h2>📅 Detalle de Audiencia</h2>
+                <span onClick={() => setDetalle(null)} style={{ cursor: "pointer", fontSize: "22px" }}>&times;</span>
+              </div>
+
+              <div style={{ display: "grid", gap: "14px" }}>
+                <DetalleItem label="Fecha y hora" value={formatFecha(detalle.fecha_hora)} />
+                <DetalleItem label="Expediente" value={detalle.expediente_numero} />
+                <DetalleItem label="Lugar" value={detalle.lugar} />
+                <DetalleItem label="Observaciones" value={detalle.observaciones || "Sin observaciones."} />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
+  );
+}
+
+function DetalleItem({ label, value }) {
+  return (
+    <div>
+      <div style={{ fontSize: "11px", color: "#6b7f96", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</div>
+      <div style={{ fontWeight: 500, marginTop: "2px" }}>{value}</div>
+    </div>
   );
 }
 

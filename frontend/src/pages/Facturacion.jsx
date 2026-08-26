@@ -18,6 +18,7 @@ export default function Facturacion() {
   const [guardando, setGuardando] = useState(false);
   const [formError, setFormError] = useState("");
   const [editandoId, setEditandoId] = useState(null);
+  const [detalle, setDetalle] = useState(null);
 
   const [form, setForm] = useState({
     numero: "",
@@ -175,6 +176,12 @@ export default function Facturacion() {
                         <td style={tdStyle}>{fac.fecha_vencimiento || "—"}</td>
                         <td style={tdStyle}>
                           <span
+                            onClick={() => setDetalle(fac)}
+                            style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}
+                          >
+                            Ver
+                          </span>
+                          <span
                             onClick={() => handleEditar(fac)}
                             style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}
                           >
@@ -285,8 +292,69 @@ export default function Facturacion() {
             </form>
           </div>
         )}
+
+        {/* Modal de detalle */}
+        {detalle && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(10,26,43,0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 100,
+            }}
+            onClick={() => setDetalle(null)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "white",
+                borderRadius: "20px",
+                padding: "28px",
+                width: "400px",
+                maxHeight: "85vh",
+                overflowY: "auto",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                <h2>🧾 Factura {detalle.numero}</h2>
+                <span onClick={() => setDetalle(null)} style={{ cursor: "pointer", fontSize: "22px" }}>&times;</span>
+              </div>
+
+              <p>
+                <span style={{
+                  background: (estadoColors[detalle.estado] || estadoColors.pendiente).bg,
+                  color: (estadoColors[detalle.estado] || estadoColors.pendiente).color,
+                  padding: "4px 12px", borderRadius: "30px", fontSize: "12px", fontWeight: 600,
+                }}>
+                  {(estadoColors[detalle.estado] || estadoColors.pendiente).label}
+                </span>
+              </p>
+
+              <div style={{ display: "grid", gap: "14px", marginTop: "16px" }}>
+                <DetalleItem label="Cliente" value={detalle.cliente} />
+                <DetalleItem label="Concepto" value={detalle.concepto} />
+                <DetalleItem label="Monto" value={formatMonto(detalle.monto)} />
+                <DetalleItem label="Expediente" value={detalle.expediente_numero || "Sin expediente asociado"} />
+                <DetalleItem label="Fecha de emisión" value={detalle.fecha_emision} />
+                <DetalleItem label="Fecha de vencimiento" value={detalle.fecha_vencimiento || "No definida"} />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
+  );
+}
+
+function DetalleItem({ label, value }) {
+  return (
+    <div>
+      <div style={{ fontSize: "11px", color: "#6b7f96", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</div>
+      <div style={{ fontWeight: 500, marginTop: "2px" }}>{value}</div>
+    </div>
   );
 }
 
