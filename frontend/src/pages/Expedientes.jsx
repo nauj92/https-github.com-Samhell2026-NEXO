@@ -106,6 +106,43 @@ export default function Expedientes() {
     }
   };
 
+  const [nuevaEtapa, setNuevaEtapa] = useState({ nombre: "", fecha_limite: "" });
+  const [guardandoEtapa, setGuardandoEtapa] = useState(false);
+
+  const handleAgregarEtapa = async (e) => {
+  e.preventDefault();
+  setGuardandoEtapa(true);
+  try {
+    await api.post("/etapas/", {
+      expediente: detalle.id,
+      nombre: nuevaEtapa.nombre,
+      fecha_limite: nuevaEtapa.fecha_limite || null,
+      estado: "pendiente",
+      orden: detalle.etapas.length + 1,
+    });
+    setNuevaEtapa({ nombre: "", fecha_limite: "" });
+    // Recarga el expediente actualizado para refrescar el timeline
+    const response = await api.get(`/expedientes/${detalle.id}/`);
+    setDetalle(response.data);
+    cargarExpedientes();
+  } catch (err) {
+    alert("No se pudo agregar la etapa.");
+  } finally {
+    setGuardandoEtapa(false);
+  }
+ };
+
+ const handleCambiarEstadoEtapa = async (etapaId, nuevoEstado) => {
+  try {
+    await api.patch(`/etapas/${etapaId}/`, { estado: nuevoEstado });
+    const response = await api.get(`/expedientes/${detalle.id}/`);
+    setDetalle(response.data);
+    cargarExpedientes();
+  } catch (err) {
+    alert("No se pudo actualizar la etapa.");
+  }
+ };
+
   return (
     <Layout>
       <div style={{ minHeight: "100vh", background: "#f4f7fb", fontFamily: "sans-serif" }}>
@@ -293,7 +330,7 @@ export default function Expedientes() {
               justifyContent: "center",
               zIndex: 100,
             }}
-            onClick={() => setDetalle(null)}
+            onClick={() => { setDetalle(null); setNuevaEtapa({ nombre: "", fecha_limite: "" }); }}
           >
             <div
               onClick={(e) => e.stopPropagation()}
@@ -332,18 +369,20 @@ export default function Expedientes() {
               <h4 style={{ marginTop: "20px", marginBottom: "12px" }}>📌 Etapas del Proceso</h4>
               {detalle.etapas.length === 0 && (
                 <p style={{ color: "#6b7f96", fontSize: "13px" }}>Sin etapas registradas aún.</p>
-              )}
-              {detalle.etapas.map((etapa) => (
-                <div
-                  key={etapa.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "10px 0",
-                    borderBottom: "1px dashed #e9edf2",
-                  }}
-                >
+            )}
+            {detalle.etapas.map((etapa) => (
+              <div
+                key={etapa.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                  padding: "10px 0",
+                  borderBottom: "1px dashed #e9edf2",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                   <span
                     style={{
                       width: "10px",
@@ -358,7 +397,41 @@ export default function Expedientes() {
                     {etapa.fecha_limite && ` · ${etapa.fecha_limite}`}
                   </span>
                 </div>
-              ))}
+                <select
+                  value={etapa.estado}
+                  onChange={(e) => handleCambiarEstadoEtapa(etapa.id, e.target.value)}
+                  style={{ fontSize: "12px", padding: "3px 6px", borderRadius: "6px", border: "1px solid #d0d9e3" }}
+                >
+                  <option value="pendiente">Pendiente</option>
+                  <option value="en_curso">En curso</option>
+                  <option value="completada">Completada</option>
+                </select>
+              </div>
+            ))}
+
+            <form onSubmit={handleAgregarEtapa} style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
+              <input
+                type="text"
+                placeholder="Nombre de la etapa"
+                value={nuevaEtapa.nombre}
+                onChange={(e) => setNuevaEtapa({ ...nuevaEtapa, nombre: e.target.value })}
+                required
+                style={{ ...inputStyle, flex: 2 }}
+              />
+              <input
+                type="date"
+                value={nuevaEtapa.fecha_limite}
+                onChange={(e) => setNuevaEtapa({ ...nuevaEtapa, fecha_limite: e.target.value })}
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <button
+                type="submit"
+                disabled={guardandoEtapa}
+                style={{ padding: "8px 14px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer", fontSize: "13px" }}
+              >
+                +
+              </button>
+            </form>
             </div>
           </div>
         )}
