@@ -201,4 +201,4 @@ La aplicación queda disponible en `http://localhost:5173/`.
 
 ## 👤 Autor
 
-Proyecto desarrollado como parte del Semillero de Ingeniería de Software.
+Proyecto desarrollado como parte de las pasantias de Ingeniería de Software.
