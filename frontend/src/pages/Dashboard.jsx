@@ -71,13 +71,33 @@ export default function Dashboard() {
     }).format(monto);
 
     const cards = stats
-    ?[
-       { label: "Casos Activos", value: stats.casos_activos, Icon: FolderOpen, tendencia: null },
-       { label: "Audiencias Pendientes", value: stats.audiencias_pendientes, Icon: CalendarCheck, tendencia: stats.audiencias_hoy > 0 ? `⚠ ${stats.audiencias_hoy} para hoy` : null },
-       { label: "Plazos Procesales", value: stats.plazos_procesales, Icon: Clock, tendencia: stats.plazos_procesales > 0 ? "⚠ Requieren atención" : null },
-       { label: "Ingresos (Mes)", value: formatMonto(stats.ingresos_mes), Icon: Coins, tendencia: null },
-     ]
-    :[];
+      ? [
+          {
+            label: "Casos Activos",
+            value: stats.casos_activos,
+            Icon: FolderOpen,
+            tendencia: stats.casos_tramite > 0 ? `${stats.casos_tramite} en trámite` : "Sin casos en trámite",
+          },
+          {
+            label: "Audiencias Pendientes",
+            value: stats.audiencias_pendientes,
+            Icon: CalendarCheck,
+            tendencia: stats.audiencias_hoy > 0 ? `⚠ ${stats.audiencias_hoy} para hoy` : "Ninguna para hoy",
+          },
+          {
+            label: "Plazos Procesales",
+            value: stats.plazos_procesales,
+            Icon: Clock,
+            tendencia: stats.plazos_procesales > 0 ? "⚠ Requieren atención" : "Al día",
+          },
+          {
+            label: "Ingresos (Mes)",
+            value: formatMonto(stats.ingresos_mes),
+            Icon: Coins,
+            tendencia: `${stats.casos_cerrados} casos cerrados este mes`,
+          },
+        ]
+      : [];
 
    const notificacionesNoLeidas = notificaciones.filter((n) => !n.leida).length;
 
@@ -240,14 +260,21 @@ export default function Dashboard() {
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                  <span style={{ fontSize: "14px", color: "#6b7f96" }}>{card.label}</span>
+                  <span style={{ fontSize: "18px", color: "#6b7f96" }}>{card.label}</span>
                   <card.Icon size={22} color="#d4a743" />
                 </div>
-                <div style={{ fontSize: "28px", fontWeight: "bold", color: "#0a1a2b" }}>
+                <div style={{ fontSize: "29px", fontWeight: "bold", color: "#0a1a2b" }}>
                   {card.value}
                 </div>
                 {card.tendencia && (
-                  <div style={{ fontSize: "12px", color: "#c73a3a", marginTop: "6px", fontWeight: 500 }}>
+                  <div
+                    style={{
+                      fontSize: "18px",
+                      color: card.tendencia.startsWith("⚠") ? "#c73a3a" : "#6b7f96",
+                      marginTop: "6px",
+                      fontWeight: 500,
+                    }}
+                  >
                     {card.tendencia}
                   </div>
                 )}

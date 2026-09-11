@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import Layout from "../components/Layout";
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, Scale } from "lucide-react";
 
 
 const estadoColors = {

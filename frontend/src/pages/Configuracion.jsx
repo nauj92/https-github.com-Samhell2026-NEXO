@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import Layout from "../components/Layout";
+import { Settings, User, Lock } from "lucide-react";
 
 export default function Configuracion() {
   const [perfil, setPerfil] = useState(null);
@@ -78,15 +79,22 @@ export default function Configuracion() {
             fontSize: "20px",
             fontWeight: "bold",
             borderBottom: "1px solid #e9edf2",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
           }}
         >
-          ⚙️ Configuración
+          <Settings size={22} />
+          Configuración
         </header>
 
         <main style={{ padding: "32px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", maxWidth: "900px" }}>
           {/* Editar perfil */}
           <div style={{ background: "white", borderRadius: "16px", padding: "24px", border: "1px solid #eef2f6" }}>
-            <h3 style={{ marginBottom: "16px" }}>👤 Mi Perfil</h3>
+            <h3 style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <User size={18} />
+              Mi Perfil
+            </h3>
             {!perfil && <p>Cargando...</p>}
             {perfil && (
               <form onSubmit={handleGuardarPerfil}>
@@ -124,7 +132,10 @@ export default function Configuracion() {
 
           {/* Cambiar contraseña */}
           <div style={{ background: "white", borderRadius: "16px", padding: "24px", border: "1px solid #eef2f6" }}>
-            <h3 style={{ marginBottom: "16px" }}>🔒 Cambiar Contraseña</h3>
+            <h3 style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <Lock size={18} />
+              Cambiar Contraseña
+            </h3>
             <form onSubmit={handleGuardarPassword}>
               <Campo label="Contraseña actual">
                 <input
