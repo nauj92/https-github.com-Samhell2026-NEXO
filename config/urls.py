@@ -8,6 +8,8 @@ urlpatterns = [
     path("api/", include("audiencias.urls")),
     path("api/", include("facturacion.urls")),
     path("api/", include("notificaciones.urls")),
+    path("api/", include("clientes.urls")),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-]
+    path("api/", include("usuarios.urls")),
+]          
