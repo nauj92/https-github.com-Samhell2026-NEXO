@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
+import { FolderOpen, Scale, Search } from "lucide-react";
 import api from "../api";
 import Layout from "../components/Layout";
-import { FolderOpen, Scale } from "lucide-react";
-
 
 const estadoColors = {
   activo: { bg: "#e2f3e8", color: "#1b8b5e", label: "Activo" },
@@ -13,6 +12,7 @@ const estadoColors = {
 export default function Expedientes() {
   const [expedientes, setExpedientes] = useState([]);
   const [juzgados, setJuzgados] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -20,6 +20,8 @@ export default function Expedientes() {
   const [formError, setFormError] = useState("");
   const [detalle, setDetalle] = useState(null);
   const [editandoId, setEditandoId] = useState(null);
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState(null);
 
   const [form, setForm] = useState({
     numero: "",
@@ -28,6 +30,7 @@ export default function Expedientes() {
     demandado: "",
     materia: "",
     estado: "activo",
+    abogado_asignado: "",
   });
 
   const cargarExpedientes = () => {
@@ -42,6 +45,7 @@ export default function Expedientes() {
   useEffect(() => {
     cargarExpedientes();
     api.get("/juzgados/").then((response) => setJuzgados(response.data)).catch(() => {});
+    api.get("/usuarios/").then((response) => setUsuarios(response.data)).catch(() => {});
   }, []);
 
   const handleChange = (e) => {
@@ -63,6 +67,7 @@ export default function Expedientes() {
       demandado: exp.demandado,
       materia: exp.materia,
       estado: exp.estado,
+      abogado_asignado: exp.abogado_asignado || "",
     });
     setEditandoId(exp.id);
     setFormError("");
@@ -112,38 +117,52 @@ export default function Expedientes() {
   const [guardandoEtapa, setGuardandoEtapa] = useState(false);
 
   const handleAgregarEtapa = async (e) => {
-  e.preventDefault();
-  setGuardandoEtapa(true);
-  try {
-    await api.post("/etapas/", {
-      expediente: detalle.id,
-      nombre: nuevaEtapa.nombre,
-      fecha_limite: nuevaEtapa.fecha_limite || null,
-      estado: "pendiente",
-      orden: detalle.etapas.length + 1,
-    });
-    setNuevaEtapa({ nombre: "", fecha_limite: "" });
-    // Recarga el expediente actualizado para refrescar el timeline
-    const response = await api.get(`/expedientes/${detalle.id}/`);
-    setDetalle(response.data);
-    cargarExpedientes();
-  } catch (err) {
-    alert("No se pudo agregar la etapa.");
-  } finally {
-    setGuardandoEtapa(false);
-  }
- };
+    e.preventDefault();
+    setGuardandoEtapa(true);
+    try {
+      await api.post("/etapas/", {
+        expediente: detalle.id,
+        nombre: nuevaEtapa.nombre,
+        fecha_limite: nuevaEtapa.fecha_limite || null,
+        estado: "pendiente",
+        orden: detalle.etapas.length + 1,
+      });
+      setNuevaEtapa({ nombre: "", fecha_limite: "" });
+      const response = await api.get(`/expedientes/${detalle.id}/`);
+      setDetalle(response.data);
+      cargarExpedientes();
+    } catch (err) {
+      alert("No se pudo agregar la etapa.");
+    } finally {
+      setGuardandoEtapa(false);
+    }
+  };
 
- const handleCambiarEstadoEtapa = async (etapaId, nuevoEstado) => {
-  try {
-    await api.patch(`/etapas/${etapaId}/`, { estado: nuevoEstado });
-    const response = await api.get(`/expedientes/${detalle.id}/`);
-    setDetalle(response.data);
-    cargarExpedientes();
-  } catch (err) {
-    alert("No se pudo actualizar la etapa.");
-  }
- };
+  const handleCambiarEstadoEtapa = async (etapaId, nuevoEstado) => {
+    try {
+      await api.patch(`/etapas/${etapaId}/`, { estado: nuevoEstado });
+      const response = await api.get(`/expedientes/${detalle.id}/`);
+      setDetalle(response.data);
+      cargarExpedientes();
+    } catch (err) {
+      alert("No se pudo actualizar la etapa.");
+    }
+  };
+
+  const conteoEstados = {
+    activo: expedientes.filter((e) => e.estado === "activo").length,
+    tramite: expedientes.filter((e) => e.estado === "tramite").length,
+    cerrado: expedientes.filter((e) => e.estado === "cerrado").length,
+  };
+
+  const expedientesFiltrados = expedientes.filter((exp) => {
+    const coincideBusqueda =
+      exp.numero.toLowerCase().includes(busqueda.toLowerCase()) ||
+      exp.demandante.toLowerCase().includes(busqueda.toLowerCase()) ||
+      exp.demandado.toLowerCase().includes(busqueda.toLowerCase());
+    const coincideEstado = !filtroEstado || exp.estado === filtroEstado;
+    return coincideBusqueda && coincideEstado;
+  });
 
   return (
     <Layout>
@@ -162,20 +181,46 @@ export default function Expedientes() {
             <FolderOpen size={22} color="#0a1a2b" />
             Expedientes Judiciales
           </div>
-          <button
-            onClick={handleNuevoClick}
-            style={{
-              background: "#0a1a2b",
-              color: "white",
-              border: "none",
-              padding: "10px 20px",
-              borderRadius: "30px",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            + Nuevo Caso
-          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div
+              style={{
+                background: "#f4f7fb",
+                padding: "8px 16px",
+                borderRadius: "30px",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                border: "1px solid #e9edf2",
+                width: "220px",
+              }}
+            >
+              <Search size={16} color="#8899b4" />
+              <input
+                type="text"
+                placeholder="Buscar expediente..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                style={{ border: "none", background: "transparent", outline: "none", fontSize: "14px", width: "100%" }}
+              />
+            </div>
+
+            <button
+              onClick={handleNuevoClick}
+              style={{
+                background: "#0a1a2b",
+                color: "white",
+                border: "none",
+                padding: "10px 20px",
+                borderRadius: "30px",
+                cursor: "pointer",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+              }}
+            >
+              + Nuevo Caso
+            </button>
+          </div>
         </header>
 
         <main style={{ padding: "32px" }}>
@@ -183,61 +228,97 @@ export default function Expedientes() {
           {cargando && <p>Cargando expedientes...</p>}
 
           {!cargando && !error && (
-            <div style={{ background: "white", borderRadius: "16px", border: "1px solid #eef2f6", overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
-                <thead>
-                  <tr style={{ background: "#f8fafc" }}>
-                    <th style={thStyle}>N° Expediente</th>
-                    <th style={thStyle}>Demandante</th>
-                    <th style={thStyle}>Demandado</th>
-                    <th style={thStyle}>Juzgado</th>
-                    <th style={thStyle}>Estado</th>
-                    <th style={thStyle}>Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {expedientes.map((exp) => {
-                    const estado = estadoColors[exp.estado] || estadoColors.activo;
-                    return (
-                      <tr key={exp.id} style={{ borderTop: "1px solid #f0f3f8" }}>
-                        <td style={tdStyle}><strong>{exp.numero}</strong></td>
-                        <td style={tdStyle}>{exp.demandante}</td>
-                        <td style={tdStyle}>{exp.demandado}</td>
-                        <td style={tdStyle}>{exp.juzgado_nombre}</td>
-                        <td style={tdStyle}>
-                          <span style={{ background: estado.bg, color: estado.color, padding: "4px 12px", borderRadius: "30px", fontSize: "12px", fontWeight: 600 }}>
-                            {estado.label}
-                          </span>
-                        </td>
-                        <td style={tdStyle}>
-                          <span
-                            onClick={() => setDetalle(exp)}
-                            style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}
-                          >
-                            Ver
-                          </span>
-                          <span
-                            onClick={() => handleEditar(exp)}
-                            style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}
-                          >
-                            Editar
-                          </span>
-                          <span
-                            onClick={() => handleEliminar(exp.id)}
-                            style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}
-                          >
-                            Eliminar
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {expedientes.length === 0 && (
-                <p style={{ padding: "24px", color: "#6b7f96" }}>No hay expedientes registrados.</p>
-              )}
-            </div>
+            <>
+              {/* Contadores de estado, clicables como filtro */}
+              <div style={{ display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap" }}>
+                <FiltroBadge
+                  label={`Todos (${expedientes.length})`}
+                  activo={filtroEstado === null}
+                  onClick={() => setFiltroEstado(null)}
+                  bg="#eef2f6"
+                  color="#1a2c3e"
+                />
+                <FiltroBadge
+                  label={`Activos (${conteoEstados.activo})`}
+                  activo={filtroEstado === "activo"}
+                  onClick={() => setFiltroEstado("activo")}
+                  bg="#e2f3e8"
+                  color="#1b8b5e"
+                />
+                <FiltroBadge
+                  label={`En trámite (${conteoEstados.tramite})`}
+                  activo={filtroEstado === "tramite"}
+                  onClick={() => setFiltroEstado("tramite")}
+                  bg="#fff3d6"
+                  color="#a8681a"
+                />
+                <FiltroBadge
+                  label={`Cerrados (${conteoEstados.cerrado})`}
+                  activo={filtroEstado === "cerrado"}
+                  onClick={() => setFiltroEstado("cerrado")}
+                  bg="#e9ecf0"
+                  color="#5b6f84"
+                />
+              </div>
+
+              <div style={{ background: "white", borderRadius: "16px", border: "1px solid #eef2f6", overflow: "hidden" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafc" }}>
+                      <th style={thStyle}>N° Expediente</th>
+                      <th style={thStyle}>Demandante</th>
+                      <th style={thStyle}>Demandado</th>
+                      <th style={thStyle}>Juzgado</th>
+                      <th style={thStyle}>Estado</th>
+                      <th style={thStyle}>Abogado</th>
+                      <th style={thStyle}>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expedientesFiltrados.map((exp) => {
+                      const estado = estadoColors[exp.estado] || estadoColors.activo;
+                      return (
+                        <tr key={exp.id} style={{ borderTop: "1px solid #f0f3f8" }}>
+                          <td style={tdStyle}><strong>{exp.numero}</strong></td>
+                          <td style={tdStyle}>{exp.demandante}</td>
+                          <td style={tdStyle}>{exp.demandado}</td>
+                          <td style={tdStyle}>{exp.juzgado_nombre}</td>
+                          <td style={tdStyle}>
+                            <span style={{ background: estado.bg, color: estado.color, padding: "4px 12px", borderRadius: "30px", fontSize: "12px", fontWeight: 600 }}>
+                              {estado.label}
+                            </span>
+                          </td>
+                          <td style={tdStyle}>{exp.abogado_asignado_nombre || "Sin asignar"}</td>
+                          <td style={tdStyle}>
+                            <span
+                              onClick={() => setDetalle(exp)}
+                              style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}
+                            >
+                              Ver
+                            </span>
+                            <span
+                              onClick={() => handleEditar(exp)}
+                              style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}
+                            >
+                              Editar
+                            </span>
+                            <span
+                              onClick={() => handleEliminar(exp.id)}
+                              style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}
+                            >
+                              Eliminar
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {expedientesFiltrados.length === 0 && (
+                  <p style={{ padding: "24px", color: "#6b7f96" }}>No hay expedientes que coincidan.</p>
+                )}
+              </div>
+            </>
           )}
         </main>
 
@@ -295,11 +376,12 @@ export default function Expedientes() {
                 <input name="materia" value={form.materia} onChange={handleChange} required style={inputStyle} />
               </Campo>
 
-              <Campo label="Estado">
-                <select name="estado" value={form.estado} onChange={handleChange} style={inputStyle}>
-                  <option value="activo">Activo</option>
-                  <option value="tramite">En trámite</option>
-                  <option value="cerrado">Cerrado</option>
+              <Campo label="Abogado Asignado">
+                <select name="abogado_asignado" value={form.abogado_asignado} onChange={handleChange} style={inputStyle}>
+                  <option value="">Sin asignar (se asigna a ti por defecto)</option>
+                  {usuarios.map((u) => (
+                    <option key={u.id} value={u.id}>{u.nombre_completo}</option>
+                  ))}
                 </select>
               </Campo>
 
@@ -377,74 +459,94 @@ export default function Expedientes() {
               <h4 style={{ marginTop: "20px", marginBottom: "12px" }}>📌 Etapas del Proceso</h4>
               {detalle.etapas.length === 0 && (
                 <p style={{ color: "#6b7f96", fontSize: "13px" }}>Sin etapas registradas aún.</p>
-            )}
-            {detalle.etapas.map((etapa) => (
-              <div
-                key={etapa.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "12px",
-                  padding: "10px 0",
-                  borderBottom: "1px dashed #e9edf2",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <span
-                    style={{
-                      width: "10px",
-                      height: "10px",
-                      borderRadius: "50%",
-                      background: etapa.estado === "completada" ? "#1b8b5e" : etapa.estado === "en_curso" ? "#d4a743" : "#d0d9e3",
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span style={{ fontSize: "14px" }}>
-                    <strong>{etapa.nombre}</strong>
-                    {etapa.fecha_limite && ` · ${etapa.fecha_limite}`}
-                  </span>
-                </div>
-                <select
-                  value={etapa.estado}
-                  onChange={(e) => handleCambiarEstadoEtapa(etapa.id, e.target.value)}
-                  style={{ fontSize: "12px", padding: "3px 6px", borderRadius: "6px", border: "1px solid #d0d9e3" }}
+              )}
+              {detalle.etapas.map((etapa) => (
+                <div
+                  key={etapa.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "12px",
+                    padding: "10px 0",
+                    borderBottom: "1px dashed #e9edf2",
+                  }}
                 >
-                  <option value="pendiente">Pendiente</option>
-                  <option value="en_curso">En curso</option>
-                  <option value="completada">Completada</option>
-                </select>
-              </div>
-            ))}
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <span
+                      style={{
+                        width: "10px",
+                        height: "10px",
+                        borderRadius: "50%",
+                        background: etapa.estado === "completada" ? "#1b8b5e" : etapa.estado === "en_curso" ? "#d4a743" : "#d0d9e3",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span style={{ fontSize: "14px" }}>
+                      <strong>{etapa.nombre}</strong>
+                      {etapa.fecha_limite && ` · ${etapa.fecha_limite}`}
+                    </span>
+                  </div>
+                  <select
+                    value={etapa.estado}
+                    onChange={(e) => handleCambiarEstadoEtapa(etapa.id, e.target.value)}
+                    style={{ fontSize: "12px", padding: "3px 6px", borderRadius: "6px", border: "1px solid #d0d9e3" }}
+                  >
+                    <option value="pendiente">Pendiente</option>
+                    <option value="en_curso">En curso</option>
+                    <option value="completada">Completada</option>
+                  </select>
+                </div>
+              ))}
 
-            <form onSubmit={handleAgregarEtapa} style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
-              <input
-                type="text"
-                placeholder="Nombre de la etapa"
-                value={nuevaEtapa.nombre}
-                onChange={(e) => setNuevaEtapa({ ...nuevaEtapa, nombre: e.target.value })}
-                required
-                style={{ ...inputStyle, flex: 2 }}
-              />
-              <input
-                type="date"
-                value={nuevaEtapa.fecha_limite}
-                onChange={(e) => setNuevaEtapa({ ...nuevaEtapa, fecha_limite: e.target.value })}
-                style={{ ...inputStyle, flex: 1 }}
-              />
-              <button
-                type="submit"
-                disabled={guardandoEtapa}
-                style={{ padding: "8px 14px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer", fontSize: "13px" }}
-              >
-                +
-              </button>
-            </form>
+              <form onSubmit={handleAgregarEtapa} style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
+                <input
+                  type="text"
+                  placeholder="Nombre de la etapa"
+                  value={nuevaEtapa.nombre}
+                  onChange={(e) => setNuevaEtapa({ ...nuevaEtapa, nombre: e.target.value })}
+                  required
+                  style={{ ...inputStyle, flex: 2 }}
+                />
+                <input
+                  type="date"
+                  value={nuevaEtapa.fecha_limite}
+                  onChange={(e) => setNuevaEtapa({ ...nuevaEtapa, fecha_limite: e.target.value })}
+                  style={{ ...inputStyle, flex: 1 }}
+                />
+                <button
+                  type="submit"
+                  disabled={guardandoEtapa}
+                  style={{ padding: "8px 14px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer", fontSize: "13px" }}
+                >
+                  +
+                </button>
+              </form>
             </div>
           </div>
         )}
       </div>
     </Layout>
+  );
+}
+
+function FiltroBadge({ label, activo, onClick, bg, color }) {
+  return (
+    <span
+      onClick={onClick}
+      style={{
+        background: bg,
+        color: color,
+        padding: "6px 16px",
+        borderRadius: "30px",
+        fontSize: "13px",
+        fontWeight: 600,
+        cursor: "pointer",
+        border: activo ? `2px solid ${color}` : "2px solid transparent",
+      }}
+    >
+      {label}
+    </span>
   );
 }
 
