@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import Layout from "../components/Layout";
+import { FolderOpen } from "lucide-react";
+
 
 const estadoColors = {
   activo: { bg: "#e2f3e8", color: "#1b8b5e", label: "Activo" },
@@ -156,7 +158,10 @@ export default function Expedientes() {
             borderBottom: "1px solid #e9edf2",
           }}
         >
-          <div style={{ fontSize: "20px", fontWeight: "bold" }}>📂 Expedientes Judiciales</div>
+          <div style={{ fontSize: "20px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
+            <FolderOpen size={22} color="#0a1a2b" />
+            Expedientes Judiciales
+          </div>
           <button
             onClick={handleNuevoClick}
             style={{
@@ -344,7 +349,10 @@ export default function Expedientes() {
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                <h2>⚖️ Expediente {detalle.numero}</h2>
+                <h2 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Scale size={20} />
+                  Expediente {detalle.numero}
+                </h2>
                 <span onClick={() => setDetalle(null)} style={{ cursor: "pointer", fontSize: "22px" }}>&times;</span>
               </div>
 

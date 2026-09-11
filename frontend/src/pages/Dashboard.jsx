@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { useNavigate } from "react-router-dom";
 import api from "../api";
 import Layout from "../components/Layout";
-import { useNavigate } from "react-router-dom";
+import { FolderOpen, CalendarCheck, Clock, Coins, Search, Bell, Settings, LayoutDashboard, TrendingUp, History, Gavel } from "lucide-react";
 
 const coloresMateria = ["#1f3b57", "#3a5f7a", "#d4a743", "#6b8fa0", "#a67c52", "#c73a3a"];
 
 const iconosPorTipo = {
-  audiencia: "⚖️",
-  plazo: "⏰",
-  factura: "🧾",
-  general: "📌",
+  audiencia: Gavel,
+  plazo: Clock,
+  factura: Coins,
+  general: Bell,
 };
 
 function tiempoRelativo(fechaISO) {
@@ -52,15 +53,15 @@ export default function Dashboard() {
   }, []);
 
   const marcarComoLeida = (id) => {
-  api
-    .patch(`/notificaciones/${id}/`, { leida: true })
-    .then(() => {
-      setNotificaciones((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, leida: true } : n))
-      );
-    })
-    .catch(() => {});
- };
+    api
+      .patch(`/notificaciones/${id}/`, { leida: true })
+      .then(() => {
+        setNotificaciones((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, leida: true } : n))
+        );
+      })
+      .catch(() => {});
+  };
 
   const formatMonto = (monto) =>
     new Intl.NumberFormat("es-CO", {
@@ -69,18 +70,18 @@ export default function Dashboard() {
       maximumFractionDigits: 0,
     }).format(monto);
 
-  const cards = stats
-    ? [
-        { label: "Casos Activos", value: stats.casos_activos, icon: "📁", color: "#1f3b57" },
-        { label: "Audiencias Pendientes", value: stats.audiencias_pendientes, icon: "📅", color: "#c73a3a" },
-        { label: "Plazos Procesales", value: stats.plazos_procesales, icon: "⏰", color: "#a8681a" },
-        { label: "Ingresos (Mes)", value: formatMonto(stats.ingresos_mes), icon: "💰", color: "#1b8b5e" },
-      ]
-    : [];
+    const cards = stats
+    ?[
+       { label: "Casos Activos", value: stats.casos_activos, Icon: FolderOpen, tendencia: null },
+       { label: "Audiencias Pendientes", value: stats.audiencias_pendientes, Icon: CalendarCheck, tendencia: stats.audiencias_hoy > 0 ? `⚠ ${stats.audiencias_hoy} para hoy` : null },
+       { label: "Plazos Procesales", value: stats.plazos_procesales, Icon: Clock, tendencia: stats.plazos_procesales > 0 ? "⚠ Requieren atención" : null },
+       { label: "Ingresos (Mes)", value: formatMonto(stats.ingresos_mes), Icon: Coins, tendencia: null },
+     ]
+    :[];
 
-  const notificacionesNoLeidas = notificaciones.filter((n) => !n.leida).length;
+   const notificacionesNoLeidas = notificaciones.filter((n) => !n.leida).length;
 
-  const expedientesFiltrados = expedientes.filter(
+   const expedientesFiltrados = expedientes.filter(
     (exp) =>
       exp.numero.toLowerCase().includes(busqueda.toLowerCase()) ||
       exp.demandante.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -106,8 +107,9 @@ export default function Dashboard() {
             borderBottom: "1px solid #e9edf2",
           }}
         >
-          <div style={{ fontSize: "20px", fontWeight: "bold", color: "#0a1a2b" }}>
-            📊 Panel de Control
+          <div style={{ fontSize: "20px", fontWeight: "bold", color: "#0a1a2b", display: "flex", alignItems: "center", gap: "10px" }}>
+            <LayoutDashboard size={22} />
+            Panel de Control
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
@@ -123,7 +125,7 @@ export default function Dashboard() {
                 width: "240px",
               }}
             >
-              <span>🔍</span>
+              <Search size={16} color="#8899b4" />
               <input
                 type="text"
                 placeholder="Buscar expediente..."
@@ -140,86 +142,76 @@ export default function Dashboard() {
             </div>
 
             <div style={{ position: "relative" }}>
-  <span
-    style={{ fontSize: "20px", cursor: "pointer" }}
-    onClick={() => setMostrarNotifs(!mostrarNotifs)}
-  >
-    🔔
-  </span>
-  {notificacionesNoLeidas > 0 && (
-    <span
-      style={{
-        position: "absolute",
-        top: "-4px",
-        right: "-6px",
-        background: "#c73a3a",
-        color: "white",
-        borderRadius: "50%",
-        fontSize: "10px",
-        width: "16px",
-        height: "16px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {notificacionesNoLeidas}
-    </span>
-  )}
+              <Bell size={20} color="#0a1a2b" style={{ cursor: "pointer" }} onClick={() => setMostrarNotifs(!mostrarNotifs)} />
+              {notificacionesNoLeidas > 0 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: "-4px",
+                    right: "-6px",
+                    background: "#c73a3a",
+                    color: "white",
+                    borderRadius: "50%",
+                    fontSize: "10px",
+                    width: "16px",
+                    height: "16px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {notificacionesNoLeidas}
+                </span>
+              )}
 
-  {mostrarNotifs && (
-    <div
-      style={{
-        position: "absolute",
-        top: "32px",
-        right: 0,
-        width: "280px",
-        background: "white",
-        borderRadius: "12px",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-        border: "1px solid #eef2f6",
-        zIndex: 10,
-        maxHeight: "300px",
-        overflowY: "auto",
-      }}
-    >
-      {notificaciones.length === 0 && (
-        <p style={{ padding: "16px", color: "#6b7f96", fontSize: "13px" }}>
-          No hay notificaciones.
-        </p>
-      )}
-      {notificaciones.slice(0, 8).map((n) => (
-     <div
-     key={n.id}
-     onClick={() => marcarComoLeida(n.id)}
-     style={{
-      padding: "12px 16px",
-      borderBottom: "1px solid #f0f3f8",
-      fontSize: "13px",
-      background: n.leida ? "white" : "#fef8f8",
-      cursor: "pointer",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      gap: "8px",
-    }}
-   >
-    <span>{n.mensaje}</span>
-    {!n.leida && (
-      <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#c73a3a", flexShrink: 0 }} />
-    )}
-   </div>
-   ))}
-    </div>
-  )}
-</div>
+              {mostrarNotifs && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "32px",
+                    right: 0,
+                    width: "280px",
+                    background: "white",
+                    borderRadius: "12px",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                    border: "1px solid #eef2f6",
+                    zIndex: 10,
+                    maxHeight: "300px",
+                    overflowY: "auto",
+                  }}
+                >
+                  {notificaciones.length === 0 && (
+                    <p style={{ padding: "16px", color: "#6b7f96", fontSize: "13px" }}>
+                      No hay notificaciones.
+                    </p>
+                  )}
+                  {notificaciones.slice(0, 8).map((n) => (
+                    <div
+                      key={n.id}
+                      onClick={() => marcarComoLeida(n.id)}
+                      style={{
+                        padding: "12px 16px",
+                        borderBottom: "1px solid #f0f3f8",
+                        fontSize: "13px",
+                        background: n.leida ? "white" : "#fef8f8",
+                        cursor: "pointer",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <span>{n.mensaje}</span>
+                      {!n.leida && (
+                        <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#c73a3a", flexShrink: 0 }} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-<span
-  style={{ fontSize: "20px", cursor: "pointer" }}
-  onClick={() => navigate("/configuracion")}
->
-  ⚙️
-</span>
+            <Settings size={20} color="#0a1a2b" style={{ cursor: "pointer" }} onClick={() => navigate("/configuracion")} />
           </div>
         </header>
 
@@ -247,13 +239,18 @@ export default function Dashboard() {
                   border: "1px solid #eef2f6",
                 }}
               >
-                <div style={{ fontSize: "28px", marginBottom: "8px" }}>{card.icon}</div>
-                <div style={{ fontSize: "14px", color: "#6b7f96", marginBottom: "8px" }}>
-                  {card.label}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "14px", color: "#6b7f96" }}>{card.label}</span>
+                  <card.Icon size={22} color="#d4a743" />
                 </div>
-                <div style={{ fontSize: "28px", fontWeight: "bold", color: card.color }}>
+                <div style={{ fontSize: "28px", fontWeight: "bold", color: "#0a1a2b" }}>
                   {card.value}
                 </div>
+                {card.tendencia && (
+                  <div style={{ fontSize: "12px", color: "#c73a3a", marginTop: "6px", fontWeight: 500 }}>
+                    {card.tendencia}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -276,8 +273,9 @@ export default function Dashboard() {
                 boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
               }}
             >
-              <h3 style={{ marginBottom: "16px", color: "#1a2c3e" }}>
-                📈 Casos por Área Judicial
+              <h3 style={{ marginBottom: "16px", color: "#1a2c3e", display: "flex", alignItems: "center", gap: "8px" }}>
+                <TrendingUp size={18} />
+                Casos por Área Judicial
               </h3>
               {datosGrafico.length === 0 ? (
                 <p style={{ color: "#6b7f96" }}>Aún no hay datos suficientes.</p>
@@ -307,7 +305,10 @@ export default function Dashboard() {
                 boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
               }}
             >
-              <h3 style={{ marginBottom: "16px", color: "#1a2c3e" }}>⏳ Actividad Reciente</h3>
+              <h3 style={{ marginBottom: "16px", color: "#1a2c3e", display: "flex", alignItems: "center", gap: "8px" }}>
+                <History size={18} />
+                Actividad Reciente
+              </h3>
 
               {notificaciones.length === 0 && (
                 <p style={{ color: "#6b7f96", fontSize: "14px" }}>
@@ -315,43 +316,71 @@ export default function Dashboard() {
                 </p>
               )}
 
-              {notificaciones.slice(0, 6).map((notif) => (
-                <div
-                  key={notif.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "14px",
-                    padding: "12px 0",
-                    borderBottom: "1px solid #f0f3f8",
-                  }}
-                >
+              {notificaciones.slice(0, 6).map((notif) => {
+                const partes = notif.mensaje.split(" ");
+                const primeraParte = partes.slice(0, 2).join(" ");
+                const resto = partes.slice(2).join(" ");
+                const esUrgente = notif.tipo === "plazo" && !notif.leida;
+
+                return (
                   <div
+                    key={notif.id}
                     style={{
-                      width: "36px",
-                      height: "36px",
-                      borderRadius: "10px",
-                      background: notif.leida ? "#eef3fa" : "#fde8e8",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
+                      gap: "14px",
+                      padding: "12px 0",
+                      borderBottom: "1px solid #f0f3f8",
                     }}
                   >
-                    {iconosPorTipo[notif.tipo] || "📌"}
+                    <div
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        borderRadius: "10px",
+                        background: notif.leida ? "#eef3fa" : "#fde8e8",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {(() => {
+                        const IconoNotif = iconosPorTipo[notif.tipo] || Bell;
+                        return <IconoNotif size={16} color="#1f3b57" />;
+                      })()}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: "14px" }}>
+                        <strong>{primeraParte}</strong> {resto}
+                      </div>
+                      {esUrgente && (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            marginTop: "4px",
+                            background: "#fde8e8",
+                            color: "#c73a3a",
+                            padding: "2px 10px",
+                            borderRadius: "30px",
+                            fontSize: "10px",
+                            fontWeight: 700,
+                          }}
+                        >
+                          URGENTE
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#8899b4", whiteSpace: "nowrap" }}>
+                      {tiempoRelativo(notif.creada_en)}
+                    </div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "14px" }}>{notif.mensaje}</div>
-                  </div>
-                  <div style={{ fontSize: "12px", color: "#8899b4", whiteSpace: "nowrap" }}>
-                    {tiempoRelativo(notif.creada_en)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          {/* Resultados de búsqueda (solo aparece si hay texto escrito) */}
+          {/* Resultados de búsqueda */}
           {busqueda && (
             <div
               style={{

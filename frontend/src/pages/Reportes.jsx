@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import Layout from "../components/Layout";
+import { Flag } from "lucide-react";
 
 export default function Reportes() {
   const [stats, setStats] = useState(null);
@@ -19,9 +20,13 @@ export default function Reportes() {
             fontSize: "20px",
             fontWeight: "bold",
             borderBottom: "1px solid #e9edf2",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
           }}
         >
-          🚩 Reportes
+          <Flag size={22} />
+          Reportes
         </header>
         <main style={{ padding: "32px" }}>
           {!stats && <p>Cargando...</p>}

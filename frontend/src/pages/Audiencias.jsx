@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import Layout from "../components/Layout";
+import { CalendarDays } from "lucide-react";
 
 export default function Audiencias() {
   const [audiencias, setAudiencias] = useState([]);
@@ -118,7 +119,10 @@ export default function Audiencias() {
             borderBottom: "1px solid #e9edf2",
           }}
         >
-          <div style={{ fontSize: "20px", fontWeight: "bold" }}>📅 Agenda de Audiencias</div>
+          <div style={{ fontSize: "20px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
+            <CalendarDays size={22} color="#0a1a2b" />
+            Agenda de Audiencias
+          </div>
           <button
             onClick={handleNuevoClick}
             style={{
@@ -305,7 +309,10 @@ export default function Audiencias() {
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                <h2>📅 Detalle de Audiencia</h2>
+                <h2 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <CalendarDays size={20} />
+                  Detalle de Audiencia
+                </h2>
                 <span onClick={() => setDetalle(null)} style={{ cursor: "pointer", fontSize: "22px" }}>&times;</span>
               </div>
 

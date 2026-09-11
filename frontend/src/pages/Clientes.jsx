@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import Layout from "../components/Layout";
+import { Users, User } from "lucide-react";
+
 
 export default function Clientes() {
   const [clientes, setClientes] = useState([]);
@@ -109,7 +111,10 @@ export default function Clientes() {
             borderBottom: "1px solid #e9edf2",
           }}
         >
-          <div style={{ fontSize: "20px", fontWeight: "bold" }}>👥 Clientes</div>
+          <div style={{ fontSize: "20px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
+            <Users size={22} color="#0a1a2b" />
+            Clientes
+          </div>
           <button
             onClick={handleNuevoClick}
             style={{
@@ -292,7 +297,10 @@ export default function Clientes() {
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                <h2>👤 {detalle.nombre}</h2>
+                <h2 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <User size={20} />
+                  {detalle.nombre}
+                </h2>
                 <span onClick={() => setDetalle(null)} style={{ cursor: "pointer", fontSize: "22px" }}>&times;</span>
               </div>
 

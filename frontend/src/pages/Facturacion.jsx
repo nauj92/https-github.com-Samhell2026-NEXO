@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import Layout from "../components/Layout";
+import { Wallet, Receipt } from "lucide-react";
 
 const estadoColors = {
   pendiente: { bg: "#fff3d6", color: "#a8681a", label: "Pendiente" },
@@ -124,7 +125,10 @@ export default function Facturacion() {
             borderBottom: "1px solid #e9edf2",
           }}
         >
-          <div style={{ fontSize: "20px", fontWeight: "bold" }}>💰 Facturación</div>
+          <div style={{ fontSize: "20px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
+            <Wallet size={22} color="#0a1a2b" />
+            Facturación
+          </div>
           <button
             onClick={handleNuevoClick}
             style={{
@@ -319,7 +323,10 @@ export default function Facturacion() {
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                <h2>🧾 Factura {detalle.numero}</h2>
+                <h2 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Receipt size={20} />
+                  Factura {detalle.numero}
+                </h2>
                 <span onClick={() => setDetalle(null)} style={{ cursor: "pointer", fontSize: "22px" }}>&times;</span>
               </div>
 
