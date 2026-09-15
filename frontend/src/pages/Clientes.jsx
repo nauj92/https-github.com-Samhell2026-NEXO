@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
+import { Users, User } from "lucide-react";
 import api from "../api";
 import Layout from "../components/Layout";
-import { Users, User } from "lucide-react";
-
 
 export default function Clientes() {
   const [clientes, setClientes] = useState([]);
+  const [expedientes, setExpedientes] = useState([]);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -34,7 +34,24 @@ export default function Clientes() {
 
   useEffect(() => {
     cargarClientes();
+    api.get("/expedientes/").then((response) => setExpedientes(response.data)).catch(() => {});
   }, []);
+
+  const resumenCasos = (clienteId) => {
+    const coincidencias = expedientes.filter((exp) => exp.cliente === clienteId);
+    if (coincidencias.length === 0) return "Sin casos asignados";
+
+    const activos = coincidencias.filter((e) => e.estado === "activo").length;
+    const tramite = coincidencias.filter((e) => e.estado === "tramite").length;
+    const cerrados = coincidencias.filter((e) => e.estado === "cerrado").length;
+
+    const partes = [];
+    if (activos > 0) partes.push(`${activos} caso${activos > 1 ? "s" : ""} activo${activos > 1 ? "s" : ""}`);
+    if (tramite > 0) partes.push(`${tramite} en trámite`);
+    if (cerrados > 0) partes.push(`${cerrados} cerrado${cerrados > 1 ? "s" : ""}`);
+
+    return partes.join(", ");
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -138,86 +155,55 @@ export default function Clientes() {
           {!cargando && !error && (
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(240px,1fr))",
-                gap: "16px",
+                background: "white",
+                borderRadius: "16px",
+                border: "1px solid #eef2f6",
+                padding: "20px 24px",
               }}
             >
-              {clientes.length === 0 && (
-                <p style={{ color: "#6b7f96" }}>No hay clientes registrados.</p>
-              )}
-              {clientes.map((cli) => (
-                <div
-                  key={cli.id}
-                  style={{
-                    background: "white",
-                    padding: "16px",
-                    borderRadius: "12px",
-                    border: "1px solid #eef2f6",
-                  }}
-                >
-                  <strong>{cli.nombre}</strong>
-                  <br />
-                  <span style={{ fontSize: "13px", color: "#6b7f96" }}>
-                    {cli.tipo_documento}: {cli.numero_documento}
-                  </span>
-                  <br />
-                  {cli.telefono && (
+              <h3 style={{ marginBottom: "16px", color: "#1a2c3e", display: "flex", alignItems: "center", gap: "8px" }}>
+                <Users size={18} />
+                Clientes Destacados
+              </h3>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(220px,1fr))",
+                  gap: "16px",
+                }}
+              >
+                {clientes.length === 0 && (
+                  <p style={{ color: "#6b7f96" }}>No hay clientes registrados.</p>
+                )}
+                {clientes.map((cli) => (
+                  <div key={cli.id} style={{ background: "#f8fafc", padding: "16px", borderRadius: "12px" }}>
+                    <strong>{cli.nombre}</strong>
+                    <br />
                     <span style={{ fontSize: "13px", color: "#6b7f96" }}>
-                      📞 {cli.telefono}
+                      {resumenCasos(cli.id)}
                     </span>
-                  )}
-                  <div style={{ marginTop: "10px" }}>
-                    <span
-                      onClick={() => setDetalle(cli)}
-                      style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px", fontSize: "13px" }}
-                    >
-                      Ver
-                    </span>
-                    <span
-                      onClick={() => handleEditar(cli)}
-                      style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px", fontSize: "13px" }}
-                    >
-                      Editar
-                    </span>
-                    <span
-                      onClick={() => handleEliminar(cli.id)}
-                      style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", fontSize: "13px" }}
-                    >
-                      Eliminar
-                    </span>
+                    <div style={{ marginTop: "10px" }}>
+                      <span onClick={() => setDetalle(cli)} style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px", fontSize: "13px" }}>Ver</span>
+                      <span onClick={() => handleEditar(cli)} style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px", fontSize: "13px" }}>Editar</span>
+                      <span onClick={() => handleEliminar(cli.id)} style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", fontSize: "13px" }}>Eliminar</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </main>
 
-        {/* Modal de creación/edición */}
         {mostrarForm && (
           <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(10,26,43,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 100,
-            }}
+            style={{ position: "fixed", inset: 0, background: "rgba(10,26,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
             onClick={handleCerrarModal}
           >
             <form
               onClick={(e) => e.stopPropagation()}
               onSubmit={handleSubmit}
-              style={{
-                background: "white",
-                borderRadius: "20px",
-                padding: "28px",
-                width: "420px",
-                maxHeight: "85vh",
-                overflowY: "auto",
-              }}
+              style={{ background: "white", borderRadius: "20px", padding: "28px", width: "420px", maxHeight: "85vh", overflowY: "auto" }}
             >
               <h2 style={{ marginBottom: "16px" }}>{editandoId ? "✏️ Editar Cliente" : "+ Nuevo Cliente"}</h2>
               {formError && <p style={{ color: "#c73a3a", fontSize: "13px" }}>{formError}</p>}
@@ -252,18 +238,10 @@ export default function Clientes() {
               </Campo>
 
               <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                <button
-                  type="button"
-                  onClick={handleCerrarModal}
-                  style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #d0d9e3", background: "white", cursor: "pointer" }}
-                >
+                <button type="button" onClick={handleCerrarModal} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #d0d9e3", background: "white", cursor: "pointer" }}>
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  disabled={guardando}
-                  style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer" }}
-                >
+                <button type="submit" disabled={guardando} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer" }}>
                   {guardando ? "Guardando..." : "Guardar"}
                 </button>
               </div>
@@ -271,30 +249,14 @@ export default function Clientes() {
           </div>
         )}
 
-        {/* Modal de detalle */}
         {detalle && (
           <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(10,26,43,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 100,
-            }}
+            style={{ position: "fixed", inset: 0, background: "rgba(10,26,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
             onClick={() => setDetalle(null)}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              style={{
-                background: "white",
-                borderRadius: "20px",
-                padding: "28px",
-                width: "380px",
-                maxHeight: "85vh",
-                overflowY: "auto",
-              }}
+              style={{ background: "white", borderRadius: "20px", padding: "28px", width: "380px", maxHeight: "85vh", overflowY: "auto" }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                 <h2 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -310,6 +272,7 @@ export default function Clientes() {
                 <DetalleItem label="Teléfono" value={detalle.telefono || "No registrado"} />
                 <DetalleItem label="Email" value={detalle.email || "No registrado"} />
                 <DetalleItem label="Dirección" value={detalle.direccion || "No registrada"} />
+                <DetalleItem label="Casos" value={resumenCasos(detalle.id)} />
               </div>
             </div>
           </div>

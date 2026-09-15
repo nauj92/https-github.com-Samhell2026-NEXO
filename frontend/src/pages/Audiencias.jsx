@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import { CalendarDays, Gavel, Search } from "lucide-react";
 import api from "../api";
 import Layout from "../components/Layout";
-import { CalendarDays } from "lucide-react";
 
 export default function Audiencias() {
   const [audiencias, setAudiencias] = useState([]);
@@ -13,6 +13,7 @@ export default function Audiencias() {
   const [formError, setFormError] = useState("");
   const [editandoId, setEditandoId] = useState(null);
   const [detalle, setDetalle] = useState(null);
+  const [busqueda, setBusqueda] = useState("");
 
   const [form, setForm] = useState({
     expediente: "",
@@ -45,6 +46,23 @@ export default function Audiencias() {
       minute: "2-digit",
     });
   };
+
+  const esHoy = (fechaISO) => {
+    const fecha = new Date(fechaISO);
+    const hoy = new Date();
+    return (
+      fecha.getDate() === hoy.getDate() &&
+      fecha.getMonth() === hoy.getMonth() &&
+      fecha.getFullYear() === hoy.getFullYear()
+    );
+  };
+
+  const audienciasFiltradas = audiencias.filter(
+    (aud) =>
+      aud.expediente_numero.toLowerCase().includes(busqueda.toLowerCase()) ||
+      aud.lugar.toLowerCase().includes(busqueda.toLowerCase()) ||
+      (aud.expediente_abogado || "").toLowerCase().includes(busqueda.toLowerCase())
+  );
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -123,20 +141,46 @@ export default function Audiencias() {
             <CalendarDays size={22} color="#0a1a2b" />
             Agenda de Audiencias
           </div>
-          <button
-            onClick={handleNuevoClick}
-            style={{
-              background: "#0a1a2b",
-              color: "white",
-              border: "none",
-              padding: "10px 20px",
-              borderRadius: "30px",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            + Nueva Audiencia
-          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div
+              style={{
+                background: "#f4f7fb",
+                padding: "8px 16px",
+                borderRadius: "30px",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                border: "1px solid #e9edf2",
+                width: "220px",
+              }}
+            >
+              <Search size={16} color="#8899b4" />
+              <input
+                type="text"
+                placeholder="Buscar audiencia..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                style={{ border: "none", background: "transparent", outline: "none", fontSize: "14px", width: "100%" }}
+              />
+            </div>
+
+            <button
+              onClick={handleNuevoClick}
+              style={{
+                background: "#0a1a2b",
+                color: "white",
+                border: "none",
+                padding: "10px 20px",
+                borderRadius: "30px",
+                cursor: "pointer",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+              }}
+            >
+              + Nueva Audiencia
+            </button>
+          </div>
         </header>
 
         <main style={{ padding: "32px" }}>
@@ -149,46 +193,73 @@ export default function Audiencias() {
                 background: "white",
                 borderRadius: "16px",
                 border: "1px solid #eef2f6",
-                padding: "8px 24px",
+                padding: "20px 24px",
               }}
             >
-              {audiencias.length === 0 && (
-                <p style={{ padding: "24px 0", color: "#6b7f96" }}>
-                  No hay audiencias registradas.
+              <h3 style={{ marginBottom: "16px", color: "#1a2c3e", display: "flex", alignItems: "center", gap: "8px" }}>
+                <CalendarDays size={18} />
+                Próximas Audiencias
+              </h3>
+
+              {audienciasFiltradas.length === 0 && (
+                <p style={{ padding: "12px 0", color: "#6b7f96" }}>
+                  No hay audiencias que coincidan.
                 </p>
               )}
-              {audiencias.map((aud) => (
+              {audienciasFiltradas.map((aud) => (
                 <div
                   key={aud.id}
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    padding: "16px 0",
+                    padding: "14px 0",
                     borderBottom: "1px solid #f0f3f8",
+                    flexWrap: "wrap",
+                    gap: "8px",
                   }}
                 >
                   <div>
                     <strong>{formatFecha(aud.fecha_hora)}</strong>
+                    {esHoy(aud.fecha_hora) && (
+                      <span
+                        style={{
+                          marginLeft: "12px",
+                          background: "#fde8e8",
+                          color: "#c73a3a",
+                          padding: "2px 10px",
+                          borderRadius: "30px",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Hoy
+                      </span>
+                    )}
                   </div>
-                  <div>Expediente {aud.expediente_numero}</div>
-                  <div>{aud.lugar}</div>
+                  <div style={{ color: "#6b7f96", fontSize: "13px" }}>
+                    {aud.expediente_juzgado} · Caso {aud.expediente_numero}
+                  </div>
+                  <div style={{ fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Gavel size={14} />
+                    {aud.expediente_abogado}
+                  </div>
                   <div>
                     <span
                       onClick={() => setDetalle(aud)}
-                      style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}
+                      style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px", fontSize: "13px" }}
                     >
                       Ver
                     </span>
                     <span
                       onClick={() => handleEditar(aud)}
-                      style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}
+                      style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px", fontSize: "13px" }}
                     >
                       Editar
                     </span>
                     <span
                       onClick={() => handleEliminar(aud.id)}
-                      style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}
+                      style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", fontSize: "13px" }}
                     >
                       Eliminar
                     </span>
@@ -319,6 +390,8 @@ export default function Audiencias() {
               <div style={{ display: "grid", gap: "14px" }}>
                 <DetalleItem label="Fecha y hora" value={formatFecha(detalle.fecha_hora)} />
                 <DetalleItem label="Expediente" value={detalle.expediente_numero} />
+                <DetalleItem label="Juzgado" value={detalle.expediente_juzgado} />
+                <DetalleItem label="Abogado responsable" value={detalle.expediente_abogado} />
                 <DetalleItem label="Lugar" value={detalle.lugar} />
                 <DetalleItem label="Observaciones" value={detalle.observaciones || "Sin observaciones."} />
               </div>

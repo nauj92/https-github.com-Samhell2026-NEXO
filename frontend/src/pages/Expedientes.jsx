@@ -13,6 +13,7 @@ export default function Expedientes() {
   const [expedientes, setExpedientes] = useState([]);
   const [juzgados, setJuzgados] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
+  const [clientes, setClientes] = useState([]);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -26,6 +27,7 @@ export default function Expedientes() {
   const [form, setForm] = useState({
     numero: "",
     juzgado: "",
+    cliente: "",
     demandante: "",
     demandado: "",
     materia: "",
@@ -46,6 +48,7 @@ export default function Expedientes() {
     cargarExpedientes();
     api.get("/juzgados/").then((response) => setJuzgados(response.data)).catch(() => {});
     api.get("/usuarios/").then((response) => setUsuarios(response.data)).catch(() => {});
+    api.get("/clientes/").then((response) => setClientes(response.data)).catch(() => {});
   }, []);
 
   const handleChange = (e) => {
@@ -53,7 +56,7 @@ export default function Expedientes() {
   };
 
   const handleNuevoClick = () => {
-    setForm({ numero: "", juzgado: "", demandante: "", demandado: "", materia: "", estado: "activo" });
+    setForm({ numero: "", juzgado: "", cliente: "", demandante: "", demandado: "", materia: "", estado: "activo", abogado_asignado: "" });
     setEditandoId(null);
     setFormError("");
     setMostrarForm(true);
@@ -63,6 +66,7 @@ export default function Expedientes() {
     setForm({
       numero: exp.numero,
       juzgado: exp.juzgado,
+      cliente: exp.cliente || "",
       demandante: exp.demandante,
       demandado: exp.demandado,
       materia: exp.materia,
@@ -85,14 +89,15 @@ export default function Expedientes() {
     setFormError("");
     setGuardando(true);
     try {
+      const payload = { ...form, cliente: form.cliente || null };
       if (editandoId) {
-        await api.patch(`/expedientes/${editandoId}/`, form);
+        await api.patch(`/expedientes/${editandoId}/`, payload);
       } else {
-        await api.post("/expedientes/", form);
+        await api.post("/expedientes/", payload);
       }
       setMostrarForm(false);
       setEditandoId(null);
-      setForm({ numero: "", juzgado: "", demandante: "", demandado: "", materia: "", estado: "activo" });
+      setForm({ numero: "", juzgado: "", cliente: "", demandante: "", demandado: "", materia: "", estado: "activo", abogado_asignado: "" });
       cargarExpedientes();
     } catch (err) {
       setFormError("No se pudo guardar el expediente. Revisa que el número no esté repetido.");
@@ -229,36 +234,11 @@ export default function Expedientes() {
 
           {!cargando && !error && (
             <>
-              {/* Contadores de estado, clicables como filtro */}
               <div style={{ display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap" }}>
-                <FiltroBadge
-                  label={`Todos (${expedientes.length})`}
-                  activo={filtroEstado === null}
-                  onClick={() => setFiltroEstado(null)}
-                  bg="#eef2f6"
-                  color="#1a2c3e"
-                />
-                <FiltroBadge
-                  label={`Activos (${conteoEstados.activo})`}
-                  activo={filtroEstado === "activo"}
-                  onClick={() => setFiltroEstado("activo")}
-                  bg="#e2f3e8"
-                  color="#1b8b5e"
-                />
-                <FiltroBadge
-                  label={`En trámite (${conteoEstados.tramite})`}
-                  activo={filtroEstado === "tramite"}
-                  onClick={() => setFiltroEstado("tramite")}
-                  bg="#fff3d6"
-                  color="#a8681a"
-                />
-                <FiltroBadge
-                  label={`Cerrados (${conteoEstados.cerrado})`}
-                  activo={filtroEstado === "cerrado"}
-                  onClick={() => setFiltroEstado("cerrado")}
-                  bg="#e9ecf0"
-                  color="#5b6f84"
-                />
+                <FiltroBadge label={`Todos (${expedientes.length})`} activo={filtroEstado === null} onClick={() => setFiltroEstado(null)} bg="#eef2f6" color="#1a2c3e" />
+                <FiltroBadge label={`Activos (${conteoEstados.activo})`} activo={filtroEstado === "activo"} onClick={() => setFiltroEstado("activo")} bg="#e2f3e8" color="#1b8b5e" />
+                <FiltroBadge label={`En trámite (${conteoEstados.tramite})`} activo={filtroEstado === "tramite"} onClick={() => setFiltroEstado("tramite")} bg="#fff3d6" color="#a8681a" />
+                <FiltroBadge label={`Cerrados (${conteoEstados.cerrado})`} activo={filtroEstado === "cerrado"} onClick={() => setFiltroEstado("cerrado")} bg="#e9ecf0" color="#5b6f84" />
               </div>
 
               <div style={{ background: "white", borderRadius: "16px", border: "1px solid #eef2f6", overflow: "hidden" }}>
@@ -266,6 +246,7 @@ export default function Expedientes() {
                   <thead>
                     <tr style={{ background: "#f8fafc" }}>
                       <th style={thStyle}>N° Expediente</th>
+                      <th style={thStyle}>Cliente</th>
                       <th style={thStyle}>Demandante</th>
                       <th style={thStyle}>Demandado</th>
                       <th style={thStyle}>Juzgado</th>
@@ -280,6 +261,7 @@ export default function Expedientes() {
                       return (
                         <tr key={exp.id} style={{ borderTop: "1px solid #f0f3f8" }}>
                           <td style={tdStyle}><strong>{exp.numero}</strong></td>
+                          <td style={tdStyle}>{exp.cliente_nombre || "Sin cliente"}</td>
                           <td style={tdStyle}>{exp.demandante}</td>
                           <td style={tdStyle}>{exp.demandado}</td>
                           <td style={tdStyle}>{exp.juzgado_nombre}</td>
@@ -290,24 +272,9 @@ export default function Expedientes() {
                           </td>
                           <td style={tdStyle}>{exp.abogado_asignado_nombre || "Sin asignar"}</td>
                           <td style={tdStyle}>
-                            <span
-                              onClick={() => setDetalle(exp)}
-                              style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}
-                            >
-                              Ver
-                            </span>
-                            <span
-                              onClick={() => handleEditar(exp)}
-                              style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}
-                            >
-                              Editar
-                            </span>
-                            <span
-                              onClick={() => handleEliminar(exp.id)}
-                              style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}
-                            >
-                              Eliminar
-                            </span>
+                            <span onClick={() => setDetalle(exp)} style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}>Ver</span>
+                            <span onClick={() => handleEditar(exp)} style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}>Editar</span>
+                            <span onClick={() => handleEliminar(exp.id)} style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}>Eliminar</span>
                           </td>
                         </tr>
                       );
@@ -322,37 +289,30 @@ export default function Expedientes() {
           )}
         </main>
 
-        {/* Modal de creación/edición */}
         {mostrarForm && (
           <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(10,26,43,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 100,
-            }}
+            style={{ position: "fixed", inset: 0, background: "rgba(10,26,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
             onClick={handleCerrarModal}
           >
             <form
               onClick={(e) => e.stopPropagation()}
               onSubmit={handleSubmit}
-              style={{
-                background: "white",
-                borderRadius: "20px",
-                padding: "28px",
-                width: "420px",
-                maxHeight: "85vh",
-                overflowY: "auto",
-              }}
+              style={{ background: "white", borderRadius: "20px", padding: "28px", width: "420px", maxHeight: "85vh", overflowY: "auto" }}
             >
               <h2 style={{ marginBottom: "16px" }}>{editandoId ? "✏️ Editar Expediente" : "+ Nuevo Expediente"}</h2>
               {formError && <p style={{ color: "#c73a3a", fontSize: "13px" }}>{formError}</p>}
 
               <Campo label="N° Expediente">
                 <input name="numero" value={form.numero} onChange={handleChange} required style={inputStyle} />
+              </Campo>
+
+              <Campo label="Cliente (a quién representa el despacho)">
+                <select name="cliente" value={form.cliente} onChange={handleChange} style={inputStyle}>
+                  <option value="">Sin cliente asignado</option>
+                  {clientes.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+                </select>
               </Campo>
 
               <Campo label="Juzgado">
@@ -376,6 +336,14 @@ export default function Expedientes() {
                 <input name="materia" value={form.materia} onChange={handleChange} required style={inputStyle} />
               </Campo>
 
+              <Campo label="Estado">
+                <select name="estado" value={form.estado} onChange={handleChange} style={inputStyle}>
+                  <option value="activo">Activo</option>
+                  <option value="tramite">En trámite</option>
+                  <option value="cerrado">Cerrado</option>
+                </select>
+              </Campo>
+
               <Campo label="Abogado Asignado">
                 <select name="abogado_asignado" value={form.abogado_asignado} onChange={handleChange} style={inputStyle}>
                   <option value="">Sin asignar (se asigna a ti por defecto)</option>
@@ -386,18 +354,10 @@ export default function Expedientes() {
               </Campo>
 
               <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                <button
-                  type="button"
-                  onClick={handleCerrarModal}
-                  style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #d0d9e3", background: "white", cursor: "pointer" }}
-                >
+                <button type="button" onClick={handleCerrarModal} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #d0d9e3", background: "white", cursor: "pointer" }}>
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  disabled={guardando}
-                  style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer" }}
-                >
+                <button type="submit" disabled={guardando} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer" }}>
                   {guardando ? "Guardando..." : "Guardar"}
                 </button>
               </div>
@@ -405,30 +365,14 @@ export default function Expedientes() {
           </div>
         )}
 
-        {/* Modal de detalle */}
         {detalle && (
           <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(10,26,43,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 100,
-            }}
+            style={{ position: "fixed", inset: 0, background: "rgba(10,26,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
             onClick={() => { setDetalle(null); setNuevaEtapa({ nombre: "", fecha_limite: "" }); }}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              style={{
-                background: "white",
-                borderRadius: "20px",
-                padding: "28px",
-                width: "460px",
-                maxHeight: "85vh",
-                overflowY: "auto",
-              }}
+              style={{ background: "white", borderRadius: "20px", padding: "28px", width: "460px", maxHeight: "85vh", overflowY: "auto" }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                 <h2 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -449,6 +393,7 @@ export default function Expedientes() {
               </p>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", margin: "16px 0" }}>
+                <DetalleItem label="Cliente" value={detalle.cliente_nombre || "Sin cliente asignado"} />
                 <DetalleItem label="Juzgado" value={detalle.juzgado_nombre} />
                 <DetalleItem label="Demandante" value={detalle.demandante} />
                 <DetalleItem label="Demandado" value={detalle.demandado} />
@@ -461,37 +406,19 @@ export default function Expedientes() {
                 <p style={{ color: "#6b7f96", fontSize: "13px" }}>Sin etapas registradas aún.</p>
               )}
               {detalle.etapas.map((etapa) => (
-                <div
-                  key={etapa.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "12px",
-                    padding: "10px 0",
-                    borderBottom: "1px dashed #e9edf2",
-                  }}
-                >
+                <div key={etapa.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", padding: "10px 0", borderBottom: "1px dashed #e9edf2" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span
-                      style={{
-                        width: "10px",
-                        height: "10px",
-                        borderRadius: "50%",
-                        background: etapa.estado === "completada" ? "#1b8b5e" : etapa.estado === "en_curso" ? "#d4a743" : "#d0d9e3",
-                        flexShrink: 0,
-                      }}
-                    />
+                    <span style={{
+                      width: "10px", height: "10px", borderRadius: "50%",
+                      background: etapa.estado === "completada" ? "#1b8b5e" : etapa.estado === "en_curso" ? "#d4a743" : "#d0d9e3",
+                      flexShrink: 0,
+                    }} />
                     <span style={{ fontSize: "14px" }}>
                       <strong>{etapa.nombre}</strong>
                       {etapa.fecha_limite && ` · ${etapa.fecha_limite}`}
                     </span>
                   </div>
-                  <select
-                    value={etapa.estado}
-                    onChange={(e) => handleCambiarEstadoEtapa(etapa.id, e.target.value)}
-                    style={{ fontSize: "12px", padding: "3px 6px", borderRadius: "6px", border: "1px solid #d0d9e3" }}
-                  >
+                  <select value={etapa.estado} onChange={(e) => handleCambiarEstadoEtapa(etapa.id, e.target.value)} style={{ fontSize: "12px", padding: "3px 6px", borderRadius: "6px", border: "1px solid #d0d9e3" }}>
                     <option value="pendiente">Pendiente</option>
                     <option value="en_curso">En curso</option>
                     <option value="completada">Completada</option>
@@ -514,11 +441,7 @@ export default function Expedientes() {
                   onChange={(e) => setNuevaEtapa({ ...nuevaEtapa, fecha_limite: e.target.value })}
                   style={{ ...inputStyle, flex: 1 }}
                 />
-                <button
-                  type="submit"
-                  disabled={guardandoEtapa}
-                  style={{ padding: "8px 14px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer", fontSize: "13px" }}
-                >
+                <button type="submit" disabled={guardandoEtapa} style={{ padding: "8px 14px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer", fontSize: "13px" }}>
                   +
                 </button>
               </form>
@@ -532,19 +455,7 @@ export default function Expedientes() {
 
 function FiltroBadge({ label, activo, onClick, bg, color }) {
   return (
-    <span
-      onClick={onClick}
-      style={{
-        background: bg,
-        color: color,
-        padding: "6px 16px",
-        borderRadius: "30px",
-        fontSize: "13px",
-        fontWeight: 600,
-        cursor: "pointer",
-        border: activo ? `2px solid ${color}` : "2px solid transparent",
-      }}
-    >
+    <span onClick={onClick} style={{ background: bg, color, padding: "6px 16px", borderRadius: "30px", fontSize: "13px", fontWeight: 600, cursor: "pointer", border: activo ? `2px solid ${color}` : "2px solid transparent" }}>
       {label}
     </span>
   );
