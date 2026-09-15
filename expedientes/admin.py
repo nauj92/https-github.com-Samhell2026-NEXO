@@ -15,7 +15,7 @@ class EtapaProcesoInline(admin.TabularInline):
 
 @admin.register(Expediente)
 class ExpedienteAdmin(admin.ModelAdmin):
-    list_display = ("numero", "demandante", "demandado", "estado", "abogado_asignado", "juzgado")
+    list_display = ("numero", "cliente", "demandante", "demandado", "estado", "abogado_asignado", "juzgado")
     list_filter = ("estado", "materia", "juzgado")
     search_fields = ("numero", "demandante", "demandado")
     inlines = [EtapaProcesoInline]

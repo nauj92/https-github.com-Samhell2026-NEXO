@@ -1,12 +1,14 @@
 from rest_framework import viewsets
-from .models import Juzgado, Expediente, EtapaProceso
-from .serializers import JuzgadoSerializer, ExpedienteSerializer, EtapaProcesoSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.utils import timezone
 from datetime import timedelta
-from .models import Expediente
+from django.db.models import Sum, Count
+from .models import Juzgado, Expediente, EtapaProceso
+from .serializers import JuzgadoSerializer, ExpedienteSerializer, EtapaProcesoSerializer
 from audiencias.models import Audiencia
+from facturacion.models import Factura
+
 
 class JuzgadoViewSet(viewsets.ModelViewSet):
     queryset = Juzgado.objects.all()
@@ -34,9 +36,6 @@ class ExpedienteViewSet(viewsets.ModelViewSet):
 class EtapaProcesoViewSet(viewsets.ModelViewSet):
     queryset = EtapaProceso.objects.all()
     serializer_class = EtapaProcesoSerializer
-    
-    
-    
 
 
 class DashboardStatsView(APIView):
@@ -53,11 +52,26 @@ class DashboardStatsView(APIView):
         ).count()
         audiencias_hoy = Audiencia.objects.filter(fecha_hora__date=hoy).count()
 
+        plazos_procesales = EtapaProceso.objects.filter(
+            estado=EtapaProceso.Estado.PENDIENTE, fecha_limite__isnull=False
+        ).count()
+
+        ingresos_mes = Factura.objects.filter(
+            fecha_emision__year=hoy.year, fecha_emision__month=hoy.month
+        ).aggregate(total=Sum("monto"))["total"] or 0
+
+        casos_por_materia = list(
+            Expediente.objects.values("materia").annotate(total=Count("id")).order_by("-total")
+        )
+
         data = {
             "casos_activos": casos_activos,
             "casos_tramite": casos_tramite,
             "casos_cerrados": casos_cerrados,
             "audiencias_pendientes": audiencias_pendientes,
             "audiencias_hoy": audiencias_hoy,
+            "plazos_procesales": plazos_procesales,
+            "ingresos_mes": ingresos_mes,
+            "casos_por_materia": casos_por_materia,
         }
         return Response(data)
