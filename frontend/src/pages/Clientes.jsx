@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Users, User } from "lucide-react";
+import { Users, User, Search } from "lucide-react";
 import api from "../api";
 import Layout from "../components/Layout";
 
@@ -13,6 +13,7 @@ export default function Clientes() {
   const [formError, setFormError] = useState("");
   const [editandoId, setEditandoId] = useState(null);
   const [detalle, setDetalle] = useState(null);
+  const [busqueda, setBusqueda] = useState("");
 
   const [form, setForm] = useState({
     nombre: "",
@@ -52,6 +53,12 @@ export default function Clientes() {
 
     return partes.join(", ");
   };
+
+  const clientesFiltrados = clientes.filter(
+  (cli) =>
+    cli.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+    cli.numero_documento.toLowerCase().includes(busqueda.toLowerCase())
+  );
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -132,20 +139,46 @@ export default function Clientes() {
             <Users size={22} color="#0a1a2b" />
             Clientes
           </div>
-          <button
-            onClick={handleNuevoClick}
-            style={{
-              background: "#0a1a2b",
-              color: "white",
-              border: "none",
-              padding: "10px 20px",
-              borderRadius: "30px",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            + Nuevo Cliente
-          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div
+              style={{
+                background: "#f4f7fb",
+                padding: "8px 16px",
+                borderRadius: "30px",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                border: "1px solid #e9edf2",
+                width: "220px",
+              }}
+            >
+              <Search size={16} color="#8899b4" />
+              <input
+                type="text"
+                placeholder="Buscar cliente..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                style={{ border: "none", background: "transparent", outline: "none", fontSize: "14px", width: "100%" }}
+              />
+            </div>
+
+            <button
+              onClick={handleNuevoClick}
+              style={{
+                background: "#0a1a2b",
+                color: "white",
+                border: "none",
+                padding: "10px 20px",
+                borderRadius: "30px",
+                cursor: "pointer",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+              }}
+            >
+              + Nuevo Cliente
+            </button>
+          </div>
         </header>
 
         <main style={{ padding: "32px" }}>
@@ -173,10 +206,10 @@ export default function Clientes() {
                   gap: "16px",
                 }}
               >
-                {clientes.length === 0 && (
-                  <p style={{ color: "#6b7f96" }}>No hay clientes registrados.</p>
+                {clientesFiltrados.length === 0 && (
+                  <p style={{ color: "#6b7f96" }}>No hay clientes que coincidan.</p>
                 )}
-                {clientes.map((cli) => (
+                {clientesFiltrados.map((cli) => (
                   <div key={cli.id} style={{ background: "#f8fafc", padding: "16px", borderRadius: "12px" }}>
                     <strong>{cli.nombre}</strong>
                     <br />
