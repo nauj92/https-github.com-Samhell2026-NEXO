@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import { Wallet, Receipt, Search } from "lucide-react";
 import api from "../api";
 import Layout from "../components/Layout";
-import { Wallet, Receipt } from "lucide-react";
 
 const estadoColors = {
   pendiente: { bg: "#fff3d6", color: "#a8681a", label: "Pendiente" },
@@ -13,6 +13,7 @@ const estadoColors = {
 export default function Facturacion() {
   const [facturas, setFacturas] = useState([]);
   const [expedientes, setExpedientes] = useState([]);
+  const [clientes, setClientes] = useState([]);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -20,6 +21,7 @@ export default function Facturacion() {
   const [formError, setFormError] = useState("");
   const [editandoId, setEditandoId] = useState(null);
   const [detalle, setDetalle] = useState(null);
+  const [busqueda, setBusqueda] = useState("");
 
   const [form, setForm] = useState({
     numero: "",
@@ -43,10 +45,24 @@ export default function Facturacion() {
   useEffect(() => {
     cargarFacturas();
     api.get("/expedientes/").then((response) => setExpedientes(response.data)).catch(() => {});
+    api.get("/clientes/").then((response) => setClientes(response.data)).catch(() => {});
   }, []);
 
   const formatMonto = (monto) =>
     new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(monto);
+
+  const facturasFiltradas = facturas.filter(
+    (fac) =>
+      fac.numero.toLowerCase().includes(busqueda.toLowerCase()) ||
+      (fac.cliente_nombre || "").toLowerCase().includes(busqueda.toLowerCase()) ||
+      fac.concepto.toLowerCase().includes(busqueda.toLowerCase())
+  );
+
+  const totales = {
+    pendiente: facturas.filter((f) => f.estado === "pendiente").reduce((sum, f) => sum + Number(f.monto), 0),
+    pagada: facturas.filter((f) => f.estado === "pagada").reduce((sum, f) => sum + Number(f.monto), 0),
+    vencida: facturas.filter((f) => f.estado === "vencida").reduce((sum, f) => sum + Number(f.monto), 0),
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -63,7 +79,7 @@ export default function Facturacion() {
     setForm({
       numero: fac.numero,
       expediente: fac.expediente || "",
-      cliente: fac.cliente,
+      cliente: fac.cliente || "",
       concepto: fac.concepto,
       monto: fac.monto,
       estado: fac.estado,
@@ -85,7 +101,7 @@ export default function Facturacion() {
     setFormError("");
     setGuardando(true);
     try {
-      const payload = { ...form, expediente: form.expediente || null };
+      const payload = { ...form, expediente: form.expediente || null, cliente: form.cliente || null };
       if (editandoId) {
         await api.patch(`/facturas/${editandoId}/`, payload);
       } else {
@@ -129,20 +145,46 @@ export default function Facturacion() {
             <Wallet size={22} color="#0a1a2b" />
             Facturación
           </div>
-          <button
-            onClick={handleNuevoClick}
-            style={{
-              background: "#0a1a2b",
-              color: "white",
-              border: "none",
-              padding: "10px 20px",
-              borderRadius: "30px",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            + Nueva Factura
-          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div
+              style={{
+                background: "#f4f7fb",
+                padding: "8px 16px",
+                borderRadius: "30px",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                border: "1px solid #e9edf2",
+                width: "220px",
+              }}
+            >
+              <Search size={16} color="#8899b4" />
+              <input
+                type="text"
+                placeholder="Buscar factura..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                style={{ border: "none", background: "transparent", outline: "none", fontSize: "14px", width: "100%" }}
+              />
+            </div>
+
+            <button
+              onClick={handleNuevoClick}
+              style={{
+                background: "#0a1a2b",
+                color: "white",
+                border: "none",
+                padding: "10px 20px",
+                borderRadius: "30px",
+                cursor: "pointer",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+              }}
+            >
+              + Nueva Factura
+            </button>
+          </div>
         </header>
 
         <main style={{ padding: "32px" }}>
@@ -150,97 +192,91 @@ export default function Facturacion() {
           {cargando && <p>Cargando facturas...</p>}
 
           {!cargando && !error && (
-            <div style={{ background: "white", borderRadius: "16px", border: "1px solid #eef2f6", overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
-                <thead>
-                  <tr style={{ background: "#f8fafc" }}>
-                    <th style={thStyle}>N° Factura</th>
-                    <th style={thStyle}>Cliente</th>
-                    <th style={thStyle}>Concepto</th>
-                    <th style={thStyle}>Monto</th>
-                    <th style={thStyle}>Estado</th>
-                    <th style={thStyle}>Vencimiento</th>
-                    <th style={thStyle}>Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {facturas.map((fac) => {
-                    const estado = estadoColors[fac.estado] || estadoColors.pendiente;
-                    return (
-                      <tr key={fac.id} style={{ borderTop: "1px solid #f0f3f8" }}>
-                        <td style={tdStyle}><strong>{fac.numero}</strong></td>
-                        <td style={tdStyle}>{fac.cliente}</td>
-                        <td style={tdStyle}>{fac.concepto}</td>
-                        <td style={tdStyle}>{formatMonto(fac.monto)}</td>
-                        <td style={tdStyle}>
-                          <span style={{ background: estado.bg, color: estado.color, padding: "4px 12px", borderRadius: "30px", fontSize: "12px", fontWeight: 600 }}>
-                            {estado.label}
-                          </span>
-                        </td>
-                        <td style={tdStyle}>{fac.fecha_vencimiento || "—"}</td>
-                        <td style={tdStyle}>
-                          <span
-                            onClick={() => setDetalle(fac)}
-                            style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}
-                          >
-                            Ver
-                          </span>
-                          <span
-                            onClick={() => handleEditar(fac)}
-                            style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}
-                          >
-                            Editar
-                          </span>
-                          <span
-                            onClick={() => handleEliminar(fac.id)}
-                            style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}
-                          >
-                            Eliminar
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {facturas.length === 0 && (
-                <p style={{ padding: "24px", color: "#6b7f96" }}>No hay facturas registradas.</p>
-              )}
-            </div>
+            <>
+              {/* Tarjetas de resumen */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: "24px",
+                  marginBottom: "24px",
+                }}
+              >
+                <TarjetaResumen label="Total Pendiente" valor={formatMonto(totales.pendiente)} color="#a8681a" />
+                <TarjetaResumen label="Total Pagado" valor={formatMonto(totales.pagada)} color="#1b8b5e" />
+                <TarjetaResumen label="Total Vencido" valor={formatMonto(totales.vencida)} color="#c73a3a" />
+              </div>
+
+              <div style={{ background: "white", borderRadius: "16px", border: "1px solid #eef2f6", overflow: "hidden" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafc" }}>
+                      <th style={thStyle}>N° Factura</th>
+                      <th style={thStyle}>Cliente</th>
+                      <th style={thStyle}>Concepto</th>
+                      <th style={thStyle}>Monto</th>
+                      <th style={thStyle}>Estado</th>
+                      <th style={thStyle}>Vencimiento</th>
+                      <th style={thStyle}>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {facturasFiltradas.map((fac) => {
+                      const estado = estadoColors[fac.estado] || estadoColors.pendiente;
+                      return (
+                        <tr key={fac.id} style={{ borderTop: "1px solid #f0f3f8" }}>
+                          <td style={tdStyle}><strong>{fac.numero}</strong></td>
+                          <td style={tdStyle}>{fac.cliente_nombre || "Sin cliente"}</td>
+                          <td style={tdStyle}>{fac.concepto}</td>
+                          <td style={tdStyle}>{formatMonto(fac.monto)}</td>
+                          <td style={tdStyle}>
+                            <span style={{ background: estado.bg, color: estado.color, padding: "4px 12px", borderRadius: "30px", fontSize: "12px", fontWeight: 600 }}>
+                              {estado.label}
+                            </span>
+                          </td>
+                          <td style={tdStyle}>{fac.fecha_vencimiento || "—"}</td>
+                          <td style={tdStyle}>
+                            <span onClick={() => setDetalle(fac)} style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}>Ver</span>
+                            <span onClick={() => handleEditar(fac)} style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}>Editar</span>
+                            <span onClick={() => handleEliminar(fac.id)} style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}>Eliminar</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {facturasFiltradas.length === 0 && (
+                  <p style={{ padding: "24px", color: "#6b7f96" }}>No hay facturas que coincidan.</p>
+                )}
+              </div>
+            </>
           )}
         </main>
 
-        {/* Modal de creación/edición */}
         {mostrarForm && (
           <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(10,26,43,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 100,
-            }}
+            style={{ position: "fixed", inset: 0, background: "rgba(10,26,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
             onClick={handleCerrarModal}
           >
             <form
               onClick={(e) => e.stopPropagation()}
               onSubmit={handleSubmit}
-              style={{
-                background: "white",
-                borderRadius: "20px",
-                padding: "28px",
-                width: "420px",
-                maxHeight: "85vh",
-                overflowY: "auto",
-              }}
+              style={{ background: "white", borderRadius: "20px", padding: "28px", width: "420px", maxHeight: "85vh", overflowY: "auto" }}
             >
               <h2 style={{ marginBottom: "16px" }}>{editandoId ? "✏️ Editar Factura" : "+ Nueva Factura"}</h2>
               {formError && <p style={{ color: "#c73a3a", fontSize: "13px" }}>{formError}</p>}
 
               <Campo label="N° Factura">
                 <input name="numero" value={form.numero} onChange={handleChange} required style={inputStyle} />
+              </Campo>
+
+              <Campo label="Cliente">
+                <select name="cliente" value={form.cliente} onChange={handleChange} style={inputStyle}>
+                  <option value="">Sin cliente asignado</option>
+                  {clientes.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+                </select>
               </Campo>
 
               <Campo label="Expediente (opcional)">
@@ -250,10 +286,6 @@ export default function Facturacion() {
                     <option key={exp.id} value={exp.id}>{exp.numero}</option>
                   ))}
                 </select>
-              </Campo>
-
-              <Campo label="Cliente">
-                <input name="cliente" value={form.cliente} onChange={handleChange} required style={inputStyle} />
               </Campo>
 
               <Campo label="Concepto">
@@ -278,18 +310,10 @@ export default function Facturacion() {
               </Campo>
 
               <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                <button
-                  type="button"
-                  onClick={handleCerrarModal}
-                  style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #d0d9e3", background: "white", cursor: "pointer" }}
-                >
+                <button type="button" onClick={handleCerrarModal} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #d0d9e3", background: "white", cursor: "pointer" }}>
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  disabled={guardando}
-                  style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer" }}
-                >
+                <button type="submit" disabled={guardando} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer" }}>
                   {guardando ? "Guardando..." : "Guardar"}
                 </button>
               </div>
@@ -297,30 +321,14 @@ export default function Facturacion() {
           </div>
         )}
 
-        {/* Modal de detalle */}
         {detalle && (
           <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(10,26,43,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 100,
-            }}
+            style={{ position: "fixed", inset: 0, background: "rgba(10,26,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
             onClick={() => setDetalle(null)}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              style={{
-                background: "white",
-                borderRadius: "20px",
-                padding: "28px",
-                width: "400px",
-                maxHeight: "85vh",
-                overflowY: "auto",
-              }}
+              style={{ background: "white", borderRadius: "20px", padding: "28px", width: "400px", maxHeight: "85vh", overflowY: "auto" }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                 <h2 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -341,7 +349,7 @@ export default function Facturacion() {
               </p>
 
               <div style={{ display: "grid", gap: "14px", marginTop: "16px" }}>
-                <DetalleItem label="Cliente" value={detalle.cliente} />
+                <DetalleItem label="Cliente" value={detalle.cliente_nombre || "Sin cliente asignado"} />
                 <DetalleItem label="Concepto" value={detalle.concepto} />
                 <DetalleItem label="Monto" value={formatMonto(detalle.monto)} />
                 <DetalleItem label="Expediente" value={detalle.expediente_numero || "Sin expediente asociado"} />
@@ -353,6 +361,15 @@ export default function Facturacion() {
         )}
       </div>
     </Layout>
+  );
+}
+
+function TarjetaResumen({ label, valor, color }) {
+  return (
+    <div style={{ background: "white", borderRadius: "16px", padding: "20px 24px", border: "1px solid #eef2f6", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+      <div style={{ fontSize: "14px", color: "#6b7f96", marginBottom: "8px" }}>{label}</div>
+      <div style={{ fontSize: "24px", fontWeight: "bold", color }}>{valor}</div>
+    </div>
   );
 }
 
