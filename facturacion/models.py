@@ -13,7 +13,9 @@ class Factura(models.Model):
     expediente = models.ForeignKey(
         Expediente, on_delete=models.PROTECT, related_name="facturas", null=True, blank=True
     )
-    cliente = models.CharField(max_length=200)
+    cliente = models.ForeignKey(
+        "clientes.Cliente", on_delete=models.SET_NULL, null=True, blank=True, related_name="facturas"
+    )
     concepto = models.CharField(max_length=255)
     monto = models.DecimalField(max_digits=12, decimal_places=2)
     estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.PENDIENTE)

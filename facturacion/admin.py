@@ -6,4 +6,4 @@ from .models import Factura
 class FacturaAdmin(admin.ModelAdmin):
     list_display = ("numero", "cliente", "monto", "estado", "fecha_emision", "fecha_vencimiento")
     list_filter = ("estado",)
-    search_fields = ("numero", "cliente")
+    search_fields = ("numero", "cliente__nombre")
