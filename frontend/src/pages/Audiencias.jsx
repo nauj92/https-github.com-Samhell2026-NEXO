@@ -188,113 +188,80 @@ export default function Audiencias() {
           {cargando && <p>Cargando audiencias...</p>}
 
           {!cargando && !error && (
-            <div
-              style={{
-                background: "white",
-                borderRadius: "16px",
-                border: "1px solid #eef2f6",
-                padding: "20px 24px",
-              }}
-            >
-              <h3 style={{ marginBottom: "16px", color: "#1a2c3e", display: "flex", alignItems: "center", gap: "8px" }}>
-                <CalendarDays size={18} />
-                Próximas Audiencias
-              </h3>
+            <div style={{ background: "white", borderRadius: "16px", border: "1px solid #eef2f6", overflow: "hidden" }}>
+              <div style={{ padding: "20px 24px 0" }}>
+                <h3 style={{ marginBottom: "16px", color: "#1a2c3e", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <CalendarDays size={18} />
+                  Próximas Audiencias
+                </h3>
+              </div>
 
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc" }}>
+                    <th style={thStyle}>Fecha y Hora</th>
+                    <th style={thStyle}>Juzgado</th>
+                    <th style={thStyle}>Caso</th>
+                    <th style={thStyle}>Abogado</th>
+                    <th style={thStyle}>Lugar</th>
+                    <th style={thStyle}>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {audienciasFiltradas.map((aud) => (
+                    <tr key={aud.id} style={{ borderTop: "1px solid #f0f3f8" }}>
+                      <td style={tdStyle}>
+                        <strong>{formatFecha(aud.fecha_hora)}</strong>
+                        {esHoy(aud.fecha_hora) && (
+                          <span
+                            style={{
+                              marginLeft: "10px",
+                              background: "#fde8e8",
+                              color: "#c73a3a",
+                              padding: "2px 10px",
+                              borderRadius: "30px",
+                              fontSize: "11px",
+                              fontWeight: 700,
+                            }}
+                          >
+                            Hoy
+                          </span>
+                        )}
+                      </td>
+                      <td style={tdStyle}>{aud.expediente_juzgado}</td>
+                      <td style={tdStyle}>{aud.expediente_numero}</td>
+                      <td style={tdStyle}>
+                        <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <Gavel size={14} color="#6b7f96" />
+                          {aud.expediente_abogado}
+                        </span>
+                      </td>
+                      <td style={tdStyle}>{aud.lugar}</td>
+                      <td style={tdStyle}>
+                        <span onClick={() => setDetalle(aud)} style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}>Ver</span>
+                        <span onClick={() => handleEditar(aud)} style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}>Editar</span>
+                        <span onClick={() => handleEliminar(aud.id)} style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}>Eliminar</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
               {audienciasFiltradas.length === 0 && (
-                <p style={{ padding: "12px 0", color: "#6b7f96" }}>
-                  No hay audiencias que coincidan.
-                </p>
+                <p style={{ padding: "24px", color: "#6b7f96" }}>No hay audiencias que coincidan.</p>
               )}
-              {audienciasFiltradas.map((aud) => (
-                <div
-                  key={aud.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "14px 0",
-                    borderBottom: "1px solid #f0f3f8",
-                    flexWrap: "wrap",
-                    gap: "8px",
-                  }}
-                >
-                  <div>
-                    <strong>{formatFecha(aud.fecha_hora)}</strong>
-                    {esHoy(aud.fecha_hora) && (
-                      <span
-                        style={{
-                          marginLeft: "12px",
-                          background: "#fde8e8",
-                          color: "#c73a3a",
-                          padding: "2px 10px",
-                          borderRadius: "30px",
-                          fontSize: "11px",
-                          fontWeight: 700,
-                        }}
-                      >
-                        Hoy
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ color: "#6b7f96", fontSize: "13px" }}>
-                    {aud.expediente_juzgado} · Caso {aud.expediente_numero}
-                  </div>
-                  <div style={{ fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <Gavel size={14} />
-                    {aud.expediente_abogado}
-                  </div>
-                  <div>
-                    <span
-                      onClick={() => setDetalle(aud)}
-                      style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px", fontSize: "13px" }}
-                    >
-                      Ver
-                    </span>
-                    <span
-                      onClick={() => handleEditar(aud)}
-                      style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px", fontSize: "13px" }}
-                    >
-                      Editar
-                    </span>
-                    <span
-                      onClick={() => handleEliminar(aud.id)}
-                      style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", fontSize: "13px" }}
-                    >
-                      Eliminar
-                    </span>
-                  </div>
-                </div>
-              ))}
             </div>
           )}
         </main>
 
-        {/* Modal de creación/edición */}
         {mostrarForm && (
           <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(10,26,43,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 100,
-            }}
+            style={{ position: "fixed", inset: 0, background: "rgba(10,26,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
             onClick={handleCerrarModal}
           >
             <form
               onClick={(e) => e.stopPropagation()}
               onSubmit={handleSubmit}
-              style={{
-                background: "white",
-                borderRadius: "20px",
-                padding: "28px",
-                width: "420px",
-                maxHeight: "85vh",
-                overflowY: "auto",
-              }}
+              style={{ background: "white", borderRadius: "20px", padding: "28px", width: "420px", maxHeight: "85vh", overflowY: "auto" }}
             >
               <h2 style={{ marginBottom: "16px" }}>{editandoId ? "✏️ Editar Audiencia" : "+ Nueva Audiencia"}</h2>
               {formError && <p style={{ color: "#c73a3a", fontSize: "13px" }}>{formError}</p>}
@@ -335,18 +302,10 @@ export default function Audiencias() {
               </Campo>
 
               <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                <button
-                  type="button"
-                  onClick={handleCerrarModal}
-                  style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #d0d9e3", background: "white", cursor: "pointer" }}
-                >
+                <button type="button" onClick={handleCerrarModal} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #d0d9e3", background: "white", cursor: "pointer" }}>
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  disabled={guardando}
-                  style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer" }}
-                >
+                <button type="submit" disabled={guardando} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer" }}>
                   {guardando ? "Guardando..." : "Guardar"}
                 </button>
               </div>
@@ -354,30 +313,14 @@ export default function Audiencias() {
           </div>
         )}
 
-        {/* Modal de detalle */}
         {detalle && (
           <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(10,26,43,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 100,
-            }}
+            style={{ position: "fixed", inset: 0, background: "rgba(10,26,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
             onClick={() => setDetalle(null)}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              style={{
-                background: "white",
-                borderRadius: "20px",
-                padding: "28px",
-                width: "420px",
-                maxHeight: "85vh",
-                overflowY: "auto",
-              }}
+              style={{ background: "white", borderRadius: "20px", padding: "28px", width: "420px", maxHeight: "85vh", overflowY: "auto" }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                 <h2 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -429,3 +372,6 @@ const inputStyle = {
   fontSize: "14px",
   boxSizing: "border-box",
 };
+
+const thStyle = { textAlign: "left", padding: "14px 16px", color: "#6b7f96", fontWeight: 600, borderBottom: "1px solid #e9edf2" };
+const tdStyle = { padding: "14px 16px" };

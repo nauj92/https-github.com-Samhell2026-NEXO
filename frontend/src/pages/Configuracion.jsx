@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import Layout from "../components/Layout";
-import { Settings, User, Lock } from "lucide-react";
+import { Settings, User, Lock, Eye, EyeOff } from "lucide-react";
 
 export default function Configuracion() {
   const [perfil, setPerfil] = useState(null);
@@ -9,6 +9,9 @@ export default function Configuracion() {
   const [mensajePerfil, setMensajePerfil] = useState("");
 
   const [passwordForm, setPasswordForm] = useState({ password_actual: "", password_nueva: "", password_confirmar: "" });
+  const [mostrarActual, setMostrarActual] = useState(false);
+  const [mostrarNueva, setMostrarNueva] = useState(false);
+  const [mostrarConfirmar, setMostrarConfirmar] = useState(false);
   const [guardandoPassword, setGuardandoPassword] = useState(false);
   const [mensajePassword, setMensajePassword] = useState("");
 
@@ -138,34 +141,60 @@ export default function Configuracion() {
             </h3>
             <form onSubmit={handleGuardarPassword}>
               <Campo label="Contraseña actual">
-                <input
-                  type="password"
-                  name="password_actual"
-                  value={passwordForm.password_actual}
-                  onChange={handleChangePassword}
-                  required
-                  style={inputStyle}
-                />
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={mostrarActual ? "text" : "password"}
+                    name="password_actual"
+                    value={passwordForm.password_actual}
+                    onChange={handleChangePassword}
+                    required
+                    style={{ ...inputStyle, paddingRight: "40px" }}
+                  />
+                  <span
+                    onClick={() => setMostrarActual(!mostrarActual)}
+                    style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", cursor: "pointer", color: "#8899b4" }}
+                  >
+                    {mostrarActual ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </span>
+                </div>
               </Campo>
+
               <Campo label="Contraseña nueva">
-                <input
-                  type="password"
-                  name="password_nueva"
-                  value={passwordForm.password_nueva}
-                  onChange={handleChangePassword}
-                  required
-                  style={inputStyle}
-                />
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={mostrarNueva ? "text" : "password"}
+                    name="password_nueva"
+                    value={passwordForm.password_nueva}
+                    onChange={handleChangePassword}
+                    required
+                    style={{ ...inputStyle, paddingRight: "40px" }}
+                  />
+                  <span
+                    onClick={() => setMostrarNueva(!mostrarNueva)}
+                    style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", cursor: "pointer", color: "#8899b4" }}
+                  >
+                    {mostrarNueva ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </span>
+                </div>
               </Campo>
+
               <Campo label="Confirmar contraseña nueva">
-                <input
-                  type="password"
-                  name="password_confirmar"
-                  value={passwordForm.password_confirmar}
-                  onChange={handleChangePassword}
-                  required
-                  style={inputStyle}
-                />
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={mostrarConfirmar ? "text" : "password"}
+                    name="password_confirmar"
+                    value={passwordForm.password_confirmar}
+                    onChange={handleChangePassword}
+                    required
+                    style={{ ...inputStyle, paddingRight: "40px" }}
+                  />
+                  <span
+                    onClick={() => setMostrarConfirmar(!mostrarConfirmar)}
+                    style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", cursor: "pointer", color: "#8899b4" }}
+                  >
+                    {mostrarConfirmar ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </span>
+                </div>
               </Campo>
 
               {mensajePassword && <p style={{ fontSize: "13px" }}>{mensajePassword}</p>}
