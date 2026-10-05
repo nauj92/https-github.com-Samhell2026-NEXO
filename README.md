@@ -8,7 +8,7 @@ Proyecto desarrollado en el marco del **Semillero de Ingeniería de Software**.
 
 ## 📋 Descripción general
 
-Lex·ERP centraliza el flujo de trabajo de un despacho jurídico:
+El sistema ERP centraliza el flujo de trabajo de un despacho jurídico:
 
 - **Expedientes**: registro y seguimiento de casos judiciales, con etapas del proceso (línea de tiempo).
 - **Audiencias**: agenda de audiencias vinculadas a cada expediente.
