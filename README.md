@@ -1,4 +1,4 @@
-# ⚖️ Lex·ERP — Sistema de Gestión Judicial (NEXO / ERP Operador Judicial)
+# ⚖️ ERP — Sistema de Gestión Judicial (NEXO / ERP Operador Judicial)
 
 Sistema de administración de gestión jurídica para despachos de abogados. Permite gestionar expedientes, audiencias, clientes, facturación y notificaciones, con control de acceso por roles y trazabilidad de cambios.
 
