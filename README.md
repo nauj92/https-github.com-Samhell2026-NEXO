@@ -2,7 +2,7 @@
 
 Sistema de administración de gestión jurídica para despachos de abogados. Permite gestionar expedientes, audiencias, clientes, facturación y notificaciones, con control de acceso por roles y trazabilidad de cambios.
 
-Proyecto desarrollado en el marco del **Semillero de Ingeniería de Software**.
+Proyecto desarrollado en el marco de las **Pasantias de Ingeniería de Software**.
 
 ---
 
