@@ -321,6 +321,29 @@ Aplicación: `http://localhost:5173/`
 
 ---
 
+## 🌐 Despliegue en línea
+
+La aplicación está desplegada en [Render](https://render.com) (plan gratuito) como ambiente de demostración.
+
+| Componente | Dirección |
+|---|---|
+| Aplicación (frontend) | https://erp-frontend-wo14.onrender.com |
+| API REST (backend) | https://erp-backend-dxe7.onrender.com |
+| Panel de administración | https://erp-backend-dxe7.onrender.com/admin/ |
+
+> El backend se suspende tras 15 minutos sin uso y la primera petición puede tardar cerca de un minuto. La base de datos PostgreSQL gratuita expira a los 30 días de su creación.
+
+**Backend (Web Service, Python 3)**
+- Build Command: `./build.sh` (instala dependencias, `collectstatic`, `migrate` y crea el superusuario si no existe)
+- Start Command: `gunicorn config.wsgi:application`
+- Variables de entorno: `DJANGO_SETTINGS_MODULE=config.settings.prod`, `SECRET_KEY`, `DATABASE_URL`, `DEBUG`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_EMAIL`
+
+**Frontend (Static Site)**
+- Root Directory: `frontend`
+- Build Command: `npm install && npm run build`
+- Publish Directory: `dist`
+- Variable de entorno: `VITE_API_URL=https://erp-backend-dxe7.onrender.com/api`
+
 ## 🧩 Estado del proyecto
 
 - [x] Backend: usuarios, expedientes, audiencias, clientes, facturación, notificaciones
@@ -328,7 +351,7 @@ Aplicación: `http://localhost:5173/`
 - [x] Seguridad: axes, auditoría, permisos por rol
 - [x] Relaciones formales de base de datos (Cliente ↔ Expediente ↔ Factura)
 - [x] Frontend: 8 pantallas con CRUD completo, buscadores, reportes analíticos
-- [ ] Despliegue en producción
+- [x] Despliegue en línea (ambiente de demostración en Render) Despliegue en producción
 - [ ] Pruebas automatizadas
 
 ---
