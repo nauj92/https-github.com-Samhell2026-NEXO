@@ -24,8 +24,11 @@ from django.utils import timezone
 
 from audiencias.models import Audiencia
 from core.permisos import es_directivo
+from demandas.models import Citacion, ContestacionDemanda, Demanda
+from demandas.serializers import CitacionSerializer, ContestacionSerializer, limite_subsanacion
 from expedientes.models import EtapaProceso, Expediente
 from facturacion.models import Factura
+from vigilancia.models import Vigilancia
 
 from .models import Notificacion
 
@@ -40,6 +43,10 @@ def _crear(usuario, tipo, mensaje, clave):
         return 0
     Notificacion.objects.create(usuario=usuario, tipo=tipo, mensaje=mensaje[:255], clave=clave)
     return 1
+
+
+def limite_aviso(hoy):
+    return hoy + timedelta(days=DIAS_AVISO)
 
 
 def _cuando(fecha, hoy):
@@ -77,7 +84,7 @@ def generar_para_usuario(usuario, hoy=None):
     for aud in audiencias:
         local = timezone.localtime(aud.fecha_hora)
         mensaje = (
-            f"Audiencia {_cuando(local.date(), hoy)} a las {local:%H:%M} · "
+            f"{aud.get_tipo_display()} {_cuando(local.date(), hoy)} a las {local:%H:%M} · "
             f"Exp. {aud.expediente.numero} · {aud.lugar}"
         )
         creadas += _crear(usuario, Notificacion.Tipo.AUDIENCIA, mensaje, f"audiencia:{aud.pk}:{local.date()}")
@@ -97,6 +104,61 @@ def generar_para_usuario(usuario, hoy=None):
             mensaje = f"Plazo {_cuando(etapa.fecha_limite, hoy)}: {etapa.nombre} · Exp. {etapa.expediente.numero}"
             clave = f"plazo:{etapa.pk}:{etapa.fecha_limite}:proximo"
         creadas += _crear(usuario, Notificacion.Tipo.PLAZO, mensaje, clave)
+
+    # Demandas inadmitidas: plazo para subsanar
+    for demanda in Demanda.objects.filter(abogado_responsable=usuario, estado=Demanda.Estado.INADMITIDA):
+        limite = limite_subsanacion(demanda)
+        if limite is None or limite > limite_aviso(hoy):
+            continue
+        if limite < hoy:
+            mensaje = f"Plazo para subsanar la demanda VENCIDO hace {(hoy - limite).days} día(s): {demanda.demandante} vs {demanda.demandado}"
+            clave = f"subsanacion:{demanda.pk}:{limite}:vencido"
+        else:
+            mensaje = f"Subsanar la demanda {_cuando(limite, hoy)}: {demanda.demandante} vs {demanda.demandado}"
+            clave = f"subsanacion:{demanda.pk}:{limite}:proximo"
+        creadas += _crear(usuario, Notificacion.Tipo.PLAZO, mensaje, clave)
+
+    # Contestaciones de demanda (B1): término para contestar
+    pendientes = ContestacionDemanda.objects.filter(abogado_responsable=usuario).exclude(
+        estado__in=[ContestacionDemanda.Estado.PRESENTADA, ContestacionDemanda.Estado.NO_CONTESTADA]
+    )
+    for cont in pendientes:
+        limite = ContestacionSerializer.limite(cont)
+        if limite is None or limite > limite_aviso(hoy):
+            continue
+        caso = f"{cont.demandante} vs {cont.demandado}"
+        if limite < hoy:
+            mensaje = f"Término para CONTESTAR la demanda VENCIDO hace {(hoy - limite).days} día(s): {caso}"
+            clave = f"contestacion:{cont.pk}:{limite}:vencido"
+        else:
+            mensaje = f"Contestar la demanda {_cuando(limite, hoy)}: {caso}"
+            clave = f"contestacion:{cont.pk}:{limite}:proximo"
+        creadas += _crear(usuario, Notificacion.Tipo.PLAZO, mensaje, clave)
+
+    # Citaciones: plazo del demandado para comparecer
+    entregadas = Citacion.objects.filter(abogado_responsable=usuario, estado=Citacion.Estado.ENTREGADA)
+    for cit in entregadas:
+        limite = CitacionSerializer.limite(cit)
+        if limite is None or limite > limite_aviso(hoy):
+            continue
+        if limite < hoy:
+            mensaje = f"Venció el plazo para que {cit.destinatario} comparezca a notificarse (hace {(hoy - limite).days} día(s)): considere notificación por aviso"
+            clave = f"citacion:{cit.pk}:{limite}:vencido"
+        else:
+            mensaje = f"{cit.destinatario} puede comparecer a notificarse hasta {_cuando(limite, hoy)}"
+            clave = f"citacion:{cit.pk}:{limite}:proximo"
+        creadas += _crear(usuario, Notificacion.Tipo.PLAZO, mensaje, clave)
+
+    # Vigilancia judicial: procesos vigilados sin movimiento
+    vigilancias = Vigilancia.objects.filter(expediente__in=propios, activa=True).select_related("expediente").prefetch_related(
+        "actuaciones"
+    )
+    for vig in vigilancias:
+        if vig.en_alerta(hoy):
+            mensaje = f"Vigilancia: Exp. {vig.expediente.numero} sin movimiento hace {vig.dias_sin_movimiento(hoy)} días"
+            creadas += _crear(
+                usuario, Notificacion.Tipo.GENERAL, mensaje, f"vigilancia:{vig.pk}:{vig.fecha_referencia()}"
+            )
 
     # Facturas: solo para administradores y socios
     if es_directivo(usuario):

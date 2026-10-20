@@ -1,4 +1,4 @@
-# Lex·ERP — Mejoras para responder al ingeniero
+# ERP — Mejoras para responder al ingeniero
 
 Este paquete contiene SOLO los archivos nuevos o modificados. Cópielos encima de su proyecto (respetando las carpetas) **en una rama aparte**, así producción no se toca hasta que usted decida.
 

@@ -1,13 +1,15 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
 import Expedientes from "./pages/Expedientes";
 import Audiencias from "./pages/Audiencias";
-import Clientes from "./pages/Clientes";
-import Facturacion from "./pages/Facturacion";
-import Reportes from "./pages/Reportes";
 import Configuracion from "./pages/Configuracion";
-import Usuarios from "./pages/Usuarios";
+import Abogados from "./pages/Abogados";
+import Demandas from "./pages/Demandas";
+import Contestaciones from "./pages/Contestaciones";
+import Citaciones from "./pages/Citaciones";
+import Vigilancia from "./pages/Vigilancia";
+import Liquidacion from "./pages/Liquidacion";
+import Notificaciones from "./pages/Notificaciones";
 import RecuperarPassword from "./pages/RecuperarPassword";
 import RestablecerPassword from "./pages/RestablecerPassword";
 
@@ -19,15 +21,30 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/recuperar" element={<RecuperarPassword />} />
         <Route path="/restablecer/:uid/:token" element={<RestablecerPassword />} />
-        <Route path="/usuarios" element={<Usuarios />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/expedientes" element={<Expedientes />} />
+
+        {/* Liquidación */}
+        <Route path="/liquidacion" element={<Navigate to="/liquidacion/laboral" replace />} />
+        <Route path="/liquidacion/:tipo" element={<Liquidacion />} />
+
+        {/* Vigilancia judicial */}
+        <Route path="/vigilancia" element={<Vigilancia />} />
+
+        {/* Administración judicial */}
+        <Route path="/demandas" element={<Demandas />} />
+        <Route path="/contestaciones" element={<Contestaciones />} />
+        <Route path="/citaciones" element={<Citaciones />} />
+        <Route path="/abogados" element={<Abogados />} />
         <Route path="/audiencias" element={<Audiencias />} />
-        <Route path="/clientes" element={<Clientes />} />
-        <Route path="/facturacion" element={<Facturacion />} />
-        <Route path="/reportes" element={<Reportes />} />
+
+        {/* Fuera del menú: se llega desde los módulos, la tarjeta de perfil o la campana */}
+        <Route path="/expedientes" element={<Expedientes />} />
+        <Route path="/notificaciones" element={<Notificaciones />} />
         <Route path="/configuracion" element={<Configuracion />} />
+
+        {/* Rutas de pantallas retiradas del menú */}
+        <Route path="/usuarios" element={<Navigate to="/abogados" replace />} />
+        <Route path="*" element={<Navigate to="/liquidacion/laboral" replace />} />
       </Routes>
     </BrowserRouter>
   );
-}
+}

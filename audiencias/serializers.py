@@ -26,16 +26,19 @@ class AudienciaSerializer(serializers.ModelSerializer):
         nombre = abogado.get_full_name()
         return nombre if nombre else abogado.username
 
+    def validate_clase(self, value):
+        return " ".join(value.split())
+
     def validate_lugar(self, value):
         value = " ".join(value.split())
         if len(value) < 3:
-            raise serializers.ValidationError("Indique el lugar o la sala donde se realizará la audiencia.")
+            raise serializers.ValidationError("Indique el lugar o la sala donde se realizará la audiencia o diligencia.")
         return value
 
     def validate_fecha_hora(self, value):
         # Al programar una audiencia nueva la fecha debe ser futura (al editar se permite corregir registros).
         if self.instance is None and value < timezone.now():
-            raise serializers.ValidationError("La fecha y hora de la audiencia no pueden estar en el pasado.")
+            raise serializers.ValidationError("La fecha y hora no pueden estar en el pasado.")
         return value
 
     def validate(self, attrs):

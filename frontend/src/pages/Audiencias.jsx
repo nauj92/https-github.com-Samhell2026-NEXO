@@ -3,6 +3,7 @@ import { CalendarDays, Gavel, Search } from "lucide-react";
 import api from "../api";
 import { mensajeError } from "../utils/errores";
 import Layout from "../components/Layout";
+import { EnlaceExpedientes } from "../components/ui";
 
 export default function Audiencias() {
   const [audiencias, setAudiencias] = useState([]);
@@ -16,12 +17,7 @@ export default function Audiencias() {
   const [detalle, setDetalle] = useState(null);
   const [busqueda, setBusqueda] = useState("");
 
-  const [form, setForm] = useState({
-    expediente: "",
-    fecha_hora: "",
-    lugar: "",
-    observaciones: "",
-  });
+  const [form, setForm] = useState({ tipo: "audiencia", clase: "", expediente: "", fecha_hora: "", lugar: "", observaciones: "" });
 
   const cargarAudiencias = () => {
     setCargando(true);
@@ -70,7 +66,7 @@ export default function Audiencias() {
   };
 
   const handleNuevoClick = () => {
-    setForm({ expediente: "", fecha_hora: "", lugar: "", observaciones: "" });
+    setForm({ tipo: "audiencia", clase: "", expediente: "", fecha_hora: "", lugar: "", observaciones: "" });
     setEditandoId(null);
     setFormError("");
     setMostrarForm(true);
@@ -78,6 +74,8 @@ export default function Audiencias() {
 
   const handleEditar = (aud) => {
     setForm({
+      tipo: aud.tipo || "audiencia",
+      clase: aud.clase || "",
       expediente: aud.expediente,
       fecha_hora: aud.fecha_hora ? aud.fecha_hora.slice(0, 16) : "",
       lugar: aud.lugar,
@@ -106,7 +104,7 @@ export default function Audiencias() {
       }
       setMostrarForm(false);
       setEditandoId(null);
-      setForm({ expediente: "", fecha_hora: "", lugar: "", observaciones: "" });
+      setForm({ tipo: "audiencia", clase: "", expediente: "", fecha_hora: "", lugar: "", observaciones: "" });
       cargarAudiencias();
     } catch (err) {
       setFormError(mensajeError(err, "No se pudo guardar la audiencia."));
@@ -116,7 +114,7 @@ export default function Audiencias() {
   };
 
   const handleEliminar = async (id) => {
-    if (!window.confirm("¿Seguro que quieres eliminar esta audiencia?")) return;
+    if (!window.confirm("¿Seguro que quieres eliminar este registro?")) return;
     try {
       await api.delete(`/audiencias/${id}/`);
       cargarAudiencias();
@@ -140,7 +138,7 @@ export default function Audiencias() {
         >
           <div style={{ fontSize: "20px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
             <CalendarDays size={22} color="#0a1a2b" />
-            Agenda de Audiencias
+            Audiencias y Diligencias Judiciales
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
@@ -159,7 +157,7 @@ export default function Audiencias() {
               <Search size={16} color="#8899b4" />
               <input
                 type="text"
-                placeholder="Buscar audiencia..."
+                placeholder="Buscar..."
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 style={{ border: "none", background: "transparent", outline: "none", fontSize: "14px", width: "100%" }}
@@ -179,12 +177,13 @@ export default function Audiencias() {
                 whiteSpace: "nowrap",
               }}
             >
-              + Nueva Audiencia
+              + Nueva
             </button>
           </div>
         </header>
 
         <main style={{ padding: "32px" }}>
+          <EnlaceExpedientes />
           {error && <p style={{ color: "#c73a3a" }}>{error}</p>}
           {cargando && <p>Cargando audiencias...</p>}
 
@@ -193,13 +192,14 @@ export default function Audiencias() {
               <div style={{ padding: "20px 24px 0" }}>
                 <h3 style={{ marginBottom: "16px", color: "#1a2c3e", display: "flex", alignItems: "center", gap: "8px" }}>
                   <CalendarDays size={18} />
-                  Próximas Audiencias
+                  Agenda de audiencias y diligencias
                 </h3>
               </div>
 
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
                 <thead>
                   <tr style={{ background: "#f8fafc" }}>
+                    <th style={thStyle}>Tipo</th>
                     <th style={thStyle}>Fecha y Hora</th>
                     <th style={thStyle}>Juzgado</th>
                     <th style={thStyle}>Caso</th>
@@ -211,6 +211,10 @@ export default function Audiencias() {
                 <tbody>
                   {audienciasFiltradas.map((aud) => (
                     <tr key={aud.id} style={{ borderTop: "1px solid #f0f3f8" }}>
+                      <td style={tdStyle}>
+                        {aud.tipo === "diligencia" ? "Diligencia" : "Audiencia"}
+                        {aud.clase && <div style={{ color: "#6b7f96", fontSize: "12px" }}>{aud.clase}</div>}
+                      </td>
                       <td style={tdStyle}>
                         <strong>{formatFecha(aud.fecha_hora)}</strong>
                         {esHoy(aud.fecha_hora) && (
@@ -264,8 +268,18 @@ export default function Audiencias() {
               onSubmit={handleSubmit}
               style={{ background: "white", borderRadius: "20px", padding: "28px", width: "420px", maxHeight: "85vh", overflowY: "auto" }}
             >
-              <h2 style={{ marginBottom: "16px" }}>{editandoId ? "✏️ Editar Audiencia" : "+ Nueva Audiencia"}</h2>
+              <h2 style={{ marginBottom: "16px" }}>{editandoId ? "✏️ Editar" : "+ Nueva audiencia o diligencia"}</h2>
               {formError && <p style={{ color: "#c73a3a", fontSize: "13px", whiteSpace: "pre-line" }}>{formError}</p>}
+
+              <Campo label="Tipo">
+                <select name="tipo" value={form.tipo} onChange={handleChange} style={inputStyle}>
+                  <option value="audiencia">Audiencia</option>
+                  <option value="diligencia">Diligencia judicial</option>
+                </select>
+              </Campo>
+              <Campo label="Clase (opcional)">
+                <input name="clase" value={form.clase} onChange={handleChange} maxLength={100} placeholder="Ej.: inicial, inspección judicial, secuestro, remate" style={inputStyle} />
+              </Campo>
 
               <Campo label="Expediente">
                 <select name="expediente" value={form.expediente} onChange={handleChange} required style={inputStyle}>
@@ -326,12 +340,13 @@ export default function Audiencias() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                 <h2 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <CalendarDays size={20} />
-                  Detalle de Audiencia
+                  {detalle.tipo === "diligencia" ? "Detalle de diligencia" : "Detalle de audiencia"}
                 </h2>
                 <span onClick={() => setDetalle(null)} style={{ cursor: "pointer", fontSize: "22px" }}>&times;</span>
               </div>
 
               <div style={{ display: "grid", gap: "14px" }}>
+                <DetalleItem label="Tipo" value={`${detalle.tipo === "diligencia" ? "Diligencia judicial" : "Audiencia"}${detalle.clase ? ` · ${detalle.clase}` : ""}`} />
                 <DetalleItem label="Fecha y hora" value={formatFecha(detalle.fecha_hora)} />
                 <DetalleItem label="Expediente" value={detalle.expediente_numero} />
                 <DetalleItem label="Juzgado" value={detalle.expediente_juzgado} />
@@ -375,4 +390,4 @@ const inputStyle = {
 };
 
 const thStyle = { textAlign: "left", padding: "14px 16px", color: "#6b7f96", fontWeight: 600, borderBottom: "1px solid #e9edf2" };
-const tdStyle = { padding: "14px 16px" };
+const tdStyle = { padding: "14px 16px" };

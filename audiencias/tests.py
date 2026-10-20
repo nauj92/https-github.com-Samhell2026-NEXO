@@ -30,6 +30,25 @@ class AudienciaApiTests(APITestCase):
         self.assertEqual(r.status_code, 201, r.data)
         self.assertEqual(r.data["expediente_numero"], self.exp.numero)
 
+    def test_tipo_por_defecto_es_audiencia_y_acepta_diligencia(self):
+        self.client.force_authenticate(self.abogado)
+        r = self.crear()
+        self.assertEqual(r.data["tipo"], "audiencia")
+        r = self.client.post(
+            "/api/audiencias/",
+            {"expediente": self.exp2.pk, "fecha_hora": (self.manana + timedelta(days=2)).isoformat(), "lugar": "Predio objeto del proceso",
+             "tipo": "diligencia", "clase": "Inspección judicial"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(r.data["tipo"], "diligencia")
+        r = self.client.post(
+            "/api/audiencias/",
+            {"expediente": self.exp2.pk, "fecha_hora": (self.manana + timedelta(days=5)).isoformat(), "lugar": "Sala 2", "tipo": "otra"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400)
+
     def test_rechaza_fecha_en_el_pasado(self):
         self.client.force_authenticate(self.abogado)
         r = self.crear(fecha=timezone.now() - timedelta(days=1))

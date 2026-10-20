@@ -17,7 +17,8 @@ const input = { width: "100%", padding: "8px 10px", border: "1px solid #d5dbe5",
 const label = { fontSize: "12px", fontWeight: 600, color: "#4a5a70", display: "block", marginBottom: "4px" };
 const btn = (bg) => ({ background: bg, color: "white", border: "none", borderRadius: "8px", padding: "8px 14px", cursor: "pointer", fontWeight: 600, fontSize: "13px" });
 
-export default function Usuarios() {
+export default function Abogados() {
+  const [perfil, setPerfil] = useState(null);
   const [usuarios, setUsuarios] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
@@ -27,15 +28,30 @@ export default function Usuarios() {
   const [formError, setFormError] = useState("");
   const [guardando, setGuardando] = useState(false);
 
-  const cargar = () => {
+  const directivo = !!perfil?.es_directivo;
+
+  const cargar = (esDirectivo = directivo) => {
     setCargando(true);
+    // Administradores y socios gestionan los usuarios; el resto solo consulta el directorio de abogados.
     api
-      .get("/gestion-usuarios/")
+      .get(esDirectivo ? "/gestion-usuarios/" : "/usuarios/")
       .then((r) => setUsuarios(r.data.results ?? r.data))
-      .catch((err) => setError(mensajeError(err, "No se pudieron cargar los usuarios.")))
+      .catch((err) => setError(mensajeError(err, "No se pudo cargar el directorio de abogados.")))
       .finally(() => setCargando(false));
   };
-  useEffect(cargar, []);
+  useEffect(() => {
+    api
+      .get("/perfil/")
+      .then((r) => {
+        setPerfil(r.data);
+        cargar(r.data.es_directivo);
+      })
+      .catch((err) => {
+        setError(mensajeError(err, "No se pudo cargar el perfil."));
+        setCargando(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const abrirNuevo = () => { setForm({ ...vacio }); setEditandoId(null); setFormError(""); };
   const abrirEditar = (u) => {
@@ -95,9 +111,9 @@ export default function Usuarios() {
       <div style={{ padding: "32px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
           <h1 style={{ display: "flex", alignItems: "center", gap: "10px", color: "#0a1a2b", margin: 0 }}>
-            <Users size={26} /> Usuarios
+            <Users size={26} /> Abogados
           </h1>
-          <button style={btn("#0a1a2b")} onClick={abrirNuevo}>+ Nuevo usuario</button>
+          {directivo && <button style={btn("#0a1a2b")} onClick={abrirNuevo}>+ Nuevo abogado / usuario</button>}
         </div>
 
         {error && <p style={{ color: "#c73a3a", background: "#fde8e8", padding: "8px 12px", borderRadius: "8px", whiteSpace: "pre-line" }}>{error}</p>}
@@ -109,7 +125,7 @@ export default function Usuarios() {
           <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: "12px", overflow: "hidden" }}>
             <thead>
               <tr style={{ background: "#f1f4f9", textAlign: "left", fontSize: "13px" }}>
-                {["Usuario", "Nombre", "Correo", "Rol", "Estado", "Acciones"].map((h) => (
+                {(directivo ? ["Usuario", "Nombre", "Correo", "Rol", "Estado", "Acciones"] : ["Usuario", "Nombre", "Rol"]).map((h) => (
                   <th key={h} style={{ padding: "12px" }}>{h}</th>
                 ))}
               </tr>
@@ -119,26 +135,26 @@ export default function Usuarios() {
                 <tr key={u.id} style={{ borderTop: "1px solid #eef1f6", fontSize: "14px" }}>
                   <td style={{ padding: "12px" }}>{u.username}</td>
                   <td style={{ padding: "12px" }}>{u.nombre_completo}</td>
-                  <td style={{ padding: "12px" }}>{u.email}</td>
+                  {directivo && <td style={{ padding: "12px" }}>{u.email}</td>}
                   <td style={{ padding: "12px" }}>{(ROLES.find((r) => r[0] === u.rol) || [])[1] || u.rol}</td>
-                  <td style={{ padding: "12px", color: u.is_active ? "#1d6b3a" : "#c73a3a" }}>{u.is_active ? "Activo" : "Inactivo"}</td>
-                  <td style={{ padding: "12px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                  {directivo && <td style={{ padding: "12px", color: u.is_active ? "#1d6b3a" : "#c73a3a" }}>{u.is_active ? "Activo" : "Inactivo"}</td>}
+                  {directivo && <td style={{ padding: "12px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
                     <button style={btn("#3a6ea5")} onClick={() => abrirEditar(u)}>Editar</button>
                     <button style={btn(u.is_active ? "#c73a3a" : "#2e8b57")} onClick={() => alternarActivo(u)}>
                       {u.is_active ? "Desactivar" : "Activar"}
                     </button>
                     <button style={btn("#7a8699")} onClick={() => desbloquear(u)}>Desbloquear</button>
-                  </td>
+                  </td>}
                 </tr>
               ))}
             </tbody>
           </table>
         )}
 
-        {form && (
+        {directivo && form && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
             <form onSubmit={guardar} style={{ background: "white", padding: "28px", borderRadius: "14px", width: "420px", maxHeight: "90vh", overflowY: "auto" }}>
-              <h3 style={{ marginTop: 0 }}>{editandoId ? "Editar usuario" : "Nuevo usuario"}</h3>
+              <h3 style={{ marginTop: 0 }}>{editandoId ? "Editar abogado / usuario" : "Nuevo abogado / usuario"}</h3>
               {formError && <p style={{ color: "#c73a3a", background: "#fde8e8", padding: "8px 12px", borderRadius: "8px", fontSize: "13px", whiteSpace: "pre-line" }}>{formError}</p>}
               <div style={{ display: "grid", gap: "12px" }}>
                 <div><label style={label}>Usuario</label><input style={input} value={form.username} onChange={set("username")} disabled={!!editandoId} /></div>

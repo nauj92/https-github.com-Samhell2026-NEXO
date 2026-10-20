@@ -1,16 +1,57 @@
 import { useEffect, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, FolderOpen, Scale, Users, Wallet, Flag, LogOut, UserCog } from "lucide-react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import {
+  Scale, LogOut, Gavel, Calculator, Eye, FileText, ChevronDown, ChevronRight, Briefcase, Bell,
+  FileSignature, Send, Users, CalendarDays,
+} from "lucide-react";
 import api from "../api";
 
-const navItems = [
-  { to: "/dashboard", label: "Panel", Icon: LayoutDashboard },
-  { to: "/expedientes", label: "Expedientes", Icon: FolderOpen },
-  { to: "/audiencias", label: "Audiencias", Icon: Scale },
-  { to: "/clientes", label: "Clientes", Icon: Users },
-  { to: "/facturacion", label: "Facturación", Icon: Wallet },
-  { to: "/reportes", label: "Reportes", Icon: Flag },
+// Menú con grupos desplegables (pueden anidarse). Un elemento sin `children` es un enlace directo.
+const menu = [
+  {
+    id: "liquidacion", label: "Liquidación", Icon: Calculator,
+    children: [
+      { to: "/liquidacion/laboral", label: "Laboral", Icon: Gavel },
+      { to: "/liquidacion/credito", label: "Créditos", Icon: Gavel },
+      { to: "/liquidacion/alimentos", label: "Alimentos", Icon: Gavel },
+      { to: "/liquidacion/cuotas", label: "Cuotas de administración", Icon: Gavel },
+    ],
+  },
+  { to: "/vigilancia", label: "Vigilancia judicial", Icon: Eye },
+  {
+    id: "administracion", label: "Administración judicial", Icon: Briefcase,
+    children: [
+      {
+        id: "gestion-demanda", label: "Gestión de demanda", Icon: FileText,
+        children: [
+          { to: "/demandas", label: "A1 · Elaboración de demanda", Icon: FileText },
+          { to: "/contestaciones", label: "B1 · Contestación de demanda", Icon: FileSignature },
+        ],
+      },
+      { to: "/citaciones", label: "Citación de demanda", Icon: Send },
+      { to: "/abogados", label: "Abogados", Icon: Users },
+      { to: "/audiencias", label: "Audiencias y diligencias judiciales", Icon: CalendarDays },
+    ],
+  },
 ];
+
+// ¿Alguna pantalla de este grupo está activa?
+const contiene = (item, ruta) =>
+  item.to ? ruta.startsWith(item.to) : item.children.some((h) => contiene(h, ruta));
+
+// ids de todos los grupos (para abrir los ancestros de la pantalla actual)
+const idsActivos = (items, ruta) =>
+  items.flatMap((m) => (m.children && contiene(m, ruta) ? [m.id, ...idsActivos(m.children, ruta)] : []));
+
+const CLAVE_MENU = "menu_abiertos";
+
+function leerAbiertos() {
+  try {
+    return JSON.parse(localStorage.getItem(CLAVE_MENU)) || {};
+  } catch {
+    return {};
+  }
+}
 
 const rolLabels = {
   administrador: "Administrador",
@@ -22,14 +63,37 @@ const rolLabels = {
 export default function Sidebar() {
   const navigate = useNavigate();
   const [perfil, setPerfil] = useState(null);
+  const location = useLocation();
+  const [abiertos, setAbiertos] = useState(leerAbiertos);
 
   useEffect(() => {
     api.get("/perfil/").then((response) => setPerfil(response.data)).catch(() => {});
   }, []);
 
-  const items = perfil?.es_directivo
-    ? [...navItems, { to: "/usuarios", label: "Usuarios", Icon: UserCog }]
-    : navItems;
+  const [sinLeer, setSinLeer] = useState(0);
+
+  // Si se navega a una pantalla que está dentro de un grupo, ese grupo (y sus padres) se abren solos
+  useEffect(() => {
+    const ids = idsActivos(menu, location.pathname);
+    if (ids.length) setAbiertos((prev) => (ids.every((i) => prev[i]) ? prev : { ...prev, ...Object.fromEntries(ids.map((i) => [i, true])) }));
+  }, [location.pathname]);
+
+  // Contador de notificaciones sin leer (se refresca al cambiar de pantalla)
+  useEffect(() => {
+    api.get("/notificaciones/").then((r) => setSinLeer(r.data.filter((n) => !n.leida).length)).catch(() => {});
+  }, [location.pathname]);
+
+  const alternar = (id) => {
+    setAbiertos((prev) => {
+      const nuevo = { ...prev, [id]: !prev[id] };
+      try {
+        localStorage.setItem(CLAVE_MENU, JSON.stringify(nuevo));
+      } catch {
+        /* sin almacenamiento: el menú funciona igual */
+      }
+      return nuevo;
+    });
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("access_token");
@@ -79,28 +143,24 @@ export default function Sidebar() {
       </div>
 
       <nav style={{ flex: 1 }}>
-        {items.map(({ to, label, Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            style={({ isActive }) => ({
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              padding: "12px 16px",
-              borderRadius: "10px",
-              marginBottom: "4px",
-              textDecoration: "none",
-              color: isActive ? "white" : "#8899b4",
-              background: isActive ? "#1f3b57" : "transparent",
-              fontWeight: 500,
-            })}
-          >
-            <Icon size={18} />
-            <span>{label}</span>
-          </NavLink>
+        {menu.map((item) => (
+          <ElementoMenu key={item.id || item.to} item={item} nivel={0} abiertos={abiertos} alternar={alternar} ruta={location.pathname} />
         ))}
       </nav>
+
+      <NavLink
+        to="/notificaciones"
+        style={({ isActive }) => ({
+          display: "flex", alignItems: "center", gap: "12px", padding: "10px 16px", borderRadius: "10px", marginBottom: "8px",
+          textDecoration: "none", fontSize: "14px", color: isActive ? "white" : "#8899b4", background: isActive ? "#1f3b57" : "transparent",
+        })}
+      >
+        <Bell size={18} />
+        <span style={{ flex: 1 }}>Notificaciones</span>
+        {sinLeer > 0 && (
+          <span style={{ background: "#c73a3a", color: "white", borderRadius: "30px", fontSize: "11px", fontWeight: 700, padding: "2px 8px" }}>{sinLeer}</span>
+        )}
+      </NavLink>
 
       {perfil && (
         <div
@@ -162,4 +222,59 @@ export default function Sidebar() {
       </button>
     </aside>
   );
-}
+}
+
+function ElementoMenu({ item, nivel, abiertos, alternar, ruta }) {
+  if (!item.children) return <EnlaceMenu {...item} sub={nivel > 0} />;
+  const abierto = !!abiertos[item.id];
+  const activo = contiene(item, ruta);
+  return (
+    <div style={{ marginBottom: "4px" }}>
+      <button
+        type="button"
+        onClick={() => alternar(item.id)}
+        aria-expanded={abierto}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", gap: "12px", padding: nivel ? "9px 12px" : "12px 16px",
+          borderRadius: "10px", border: "none", cursor: "pointer", fontSize: nivel ? "14px" : "inherit", fontFamily: "inherit",
+          fontWeight: 500, textAlign: "left", background: "transparent", color: activo ? "white" : "#8899b4",
+        }}
+      >
+        {nivel === 0 && <item.Icon size={18} />}
+        <span style={{ flex: 1 }}>{item.label}</span>
+        {abierto ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+      </button>
+      {abierto && (
+        <div style={{ marginLeft: "18px", paddingLeft: "8px", borderLeft: "1px solid #1e354b" }}>
+          {item.children.map((h) => (
+            <ElementoMenu key={h.id || h.to} item={h} nivel={nivel + 1} abiertos={abiertos} alternar={alternar} ruta={ruta} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EnlaceMenu({ to, label, Icon, sub }) {
+  return (
+    <NavLink
+      to={to}
+      style={({ isActive }) => ({
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        padding: sub ? "9px 12px" : "12px 16px",
+        borderRadius: "10px",
+        marginBottom: "4px",
+        textDecoration: "none",
+        fontSize: sub ? "14px" : "inherit",
+        color: isActive ? "white" : "#8899b4",
+        background: isActive ? "#1f3b57" : "transparent",
+        fontWeight: 500,
+      })}
+    >
+      {!sub && <Icon size={18} />}
+      <span>{label}</span>
+    </NavLink>
+  );
+}

@@ -35,7 +35,7 @@ export default function Login() {
       const response = await api.post("/token/", { username, password });
       localStorage.setItem("access_token", response.data.access);
       localStorage.setItem("refresh_token", response.data.refresh);
-      navigate("/dashboard");
+      navigate("/liquidacion/laboral");
     } catch (err) {
       const st = err.response?.status;
       if (st === 401 || st === 400) setError("Usuario o contraseña incorrectos.");
@@ -183,4 +183,4 @@ export default function Login() {
       </form>
     </div>
   );
-}
+}
