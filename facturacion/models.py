@@ -21,6 +21,7 @@ class Factura(models.Model):
     estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.PENDIENTE)
     fecha_emision = models.DateField(auto_now_add=True)
     fecha_vencimiento = models.DateField(null=True, blank=True)
+    fecha_pago = models.DateField(null=True, blank=True)
 
     def __str__(self):
         return f"Factura {self.numero} - {self.cliente} (${self.monto})"
@@ -28,4 +29,4 @@ class Factura(models.Model):
     class Meta:
         verbose_name = "Factura"
         verbose_name_plural = "Facturas"
-        ordering = ["-fecha_emision"]
+        ordering = ["-fecha_emision"]

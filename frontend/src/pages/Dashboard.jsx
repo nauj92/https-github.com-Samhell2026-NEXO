@@ -88,7 +88,7 @@ export default function Dashboard() {
             label: "Plazos Procesales",
             value: stats.plazos_procesales,
             Icon: Clock,
-            tendencia: stats.plazos_procesales > 0 ? "⚠ Requieren atención" : "Al día",
+            tendencia: stats.plazos_vencidos > 0 ? `⚠ ${stats.plazos_vencidos} vencidos` : stats.plazos_procesales > 0 ? "⚠ Vencen en 7 días o menos" : "Al día",
           },
           {
             label: "Ingresos (Mes)",
@@ -445,4 +445,4 @@ export default function Dashboard() {
       </div>
     </Layout>
   );
-}
+}

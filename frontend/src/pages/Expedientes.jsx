@@ -1,7 +1,22 @@
 import { useEffect, useState } from "react";
 import { FolderOpen, Scale, Search } from "lucide-react";
 import api from "../api";
+import { mensajeError } from "../utils/errores";
 import Layout from "../components/Layout";
+
+const ESTILO_PLAZO = (dias) =>
+  dias == null ? {} : dias < 0 ? { color: "#c73a3a", fontWeight: 700 } : dias <= 3 ? { color: "#a8681a", fontWeight: 700 } : { color: "#1b8b5e" };
+
+function textoPlazo(dias) {
+  if (dias == null) return "";
+  if (dias < 0) return ` (vencida hace ${-dias} d)`;
+  if (dias === 0) return " (vence hoy)";
+  return ` (faltan ${dias} d)`;
+}
+
+function formatoTamano(b) {
+  return b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`;
+}
 
 const estadoColors = {
   activo: { bg: "#e2f3e8", color: "#1b8b5e", label: "Activo" },
@@ -89,7 +104,12 @@ export default function Expedientes() {
     setFormError("");
     setGuardando(true);
     try {
-      const payload = { ...form, cliente: form.cliente || null };
+      const payload = {
+        ...form,
+        numero: form.numero.replace(/\D/g, ""),
+        cliente: form.cliente || null,
+        abogado_asignado: form.abogado_asignado || undefined,
+      };
       if (editandoId) {
         await api.patch(`/expedientes/${editandoId}/`, payload);
       } else {
@@ -100,7 +120,7 @@ export default function Expedientes() {
       setForm({ numero: "", juzgado: "", cliente: "", demandante: "", demandado: "", materia: "", estado: "activo", abogado_asignado: "" });
       cargarExpedientes();
     } catch (err) {
-      setFormError("No se pudo guardar el expediente. Revisa que el número no esté repetido.");
+      setFormError(mensajeError(err, "No se pudo guardar el expediente."));
     } finally {
       setGuardando(false);
     }
@@ -114,30 +134,32 @@ export default function Expedientes() {
       await api.delete(`/expedientes/${id}/`);
       cargarExpedientes();
     } catch (err) {
-      alert("No se pudo eliminar el expediente.");
+      alert(mensajeError(err, "No se pudo eliminar el expediente."));
     }
   };
 
-  const [nuevaEtapa, setNuevaEtapa] = useState({ nombre: "", fecha_limite: "" });
+  const [nuevaEtapa, setNuevaEtapa] = useState({ nombre: "", fecha_limite: "", dias_habiles: "" });
   const [guardandoEtapa, setGuardandoEtapa] = useState(false);
 
   const handleAgregarEtapa = async (e) => {
     e.preventDefault();
     setGuardandoEtapa(true);
     try {
-      await api.post("/etapas/", {
+      const datosEtapa = {
         expediente: detalle.id,
         nombre: nuevaEtapa.nombre,
-        fecha_limite: nuevaEtapa.fecha_limite || null,
         estado: "pendiente",
         orden: detalle.etapas.length + 1,
-      });
-      setNuevaEtapa({ nombre: "", fecha_limite: "" });
+      };
+      if (nuevaEtapa.dias_habiles) datosEtapa.dias_habiles = Number(nuevaEtapa.dias_habiles);
+      else if (nuevaEtapa.fecha_limite) datosEtapa.fecha_limite = nuevaEtapa.fecha_limite;
+      await api.post("/etapas/", datosEtapa);
+      setNuevaEtapa({ nombre: "", fecha_limite: "", dias_habiles: "" });
       const response = await api.get(`/expedientes/${detalle.id}/`);
       setDetalle(response.data);
       cargarExpedientes();
     } catch (err) {
-      alert("No se pudo agregar la etapa.");
+      alert(mensajeError(err, "No se pudo agregar la etapa."));
     } finally {
       setGuardandoEtapa(false);
     }
@@ -150,7 +172,69 @@ export default function Expedientes() {
       setDetalle(response.data);
       cargarExpedientes();
     } catch (err) {
-      alert("No se pudo actualizar la etapa.");
+      alert(mensajeError(err, "No se pudo actualizar la etapa."));
+    }
+  };
+
+  const [documentos, setDocumentos] = useState([]);
+  const [historial, setHistorial] = useState([]);
+  const [subiendo, setSubiendo] = useState(false);
+  const [errorDoc, setErrorDoc] = useState("");
+
+  const abrirDetalle = (exp) => {
+    setDetalle(exp);
+    setDocumentos([]);
+    setHistorial([]);
+    setErrorDoc("");
+    api.get(`/expedientes/${exp.id}/documentos/`).then((r) => setDocumentos(r.data)).catch(() => {});
+    api.get(`/expedientes/${exp.id}/historial/`).then((r) => setHistorial(r.data)).catch(() => {});
+  };
+
+  const handleSubirDocumento = async (e) => {
+    const archivo = e.target.files?.[0];
+    e.target.value = "";
+    if (!archivo) return;
+    setErrorDoc("");
+    if (archivo.size > 5 * 1024 * 1024) {
+      setErrorDoc("El archivo supera el tamaño máximo permitido (5 MB).");
+      return;
+    }
+    const fd = new FormData();
+    fd.append("archivo", archivo);
+    setSubiendo(true);
+    try {
+      await api.post(`/expedientes/${detalle.id}/documentos/`, fd);
+      const r = await api.get(`/expedientes/${detalle.id}/documentos/`);
+      setDocumentos(r.data);
+    } catch (err) {
+      setErrorDoc(mensajeError(err, "No se pudo subir el archivo."));
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
+  const handleDescargarDocumento = async (doc) => {
+    try {
+      const r = await api.get(`/expedientes/${detalle.id}/documento/${doc.id}/`, { responseType: "blob" });
+      const url = URL.createObjectURL(r.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.nombre;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setErrorDoc(mensajeError(err, "No se pudo descargar el archivo."));
+    }
+  };
+
+  const handleEliminarDocumento = async (doc) => {
+    if (!window.confirm(`¿Eliminar el documento "${doc.nombre}"?`)) return;
+    try {
+      await api.delete(`/expedientes/${detalle.id}/documento/${doc.id}/`);
+      setDocumentos((prev) => prev.filter((d) => d.id !== doc.id));
+      api.get(`/expedientes/${detalle.id}/historial/`).then((r) => setHistorial(r.data)).catch(() => {});
+    } catch (err) {
+      setErrorDoc(mensajeError(err, "No se pudo eliminar el archivo."));
     }
   };
 
@@ -272,7 +356,7 @@ export default function Expedientes() {
                           </td>
                           <td style={tdStyle}>{exp.abogado_asignado_nombre || "Sin asignar"}</td>
                           <td style={tdStyle}>
-                            <span onClick={() => setDetalle(exp)} style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}>Ver</span>
+                            <span onClick={() => abrirDetalle(exp)} style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}>Ver</span>
                             <span onClick={() => handleEditar(exp)} style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}>Editar</span>
                             <span onClick={() => handleEliminar(exp.id)} style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}>Eliminar</span>
                           </td>
@@ -300,10 +384,21 @@ export default function Expedientes() {
               style={{ background: "white", borderRadius: "20px", padding: "28px", width: "420px", maxHeight: "85vh", overflowY: "auto" }}
             >
               <h2 style={{ marginBottom: "16px" }}>{editandoId ? "✏️ Editar Expediente" : "+ Nuevo Expediente"}</h2>
-              {formError && <p style={{ color: "#c73a3a", fontSize: "13px" }}>{formError}</p>}
+              {formError && <p style={{ color: "#c73a3a", fontSize: "13px", whiteSpace: "pre-line" }}>{formError}</p>}
 
               <Campo label="N° Expediente">
-                <input name="numero" value={form.numero} onChange={handleChange} required style={inputStyle} />
+                <input
+                  name="numero"
+                  value={form.numero}
+                  onChange={handleChange}
+                  required
+                  inputMode="numeric"
+                  placeholder="23 dígitos, ej. 11001310301220250012300"
+                  style={inputStyle}
+                />
+                <small style={{ color: form.numero.replace(/\D/g, "").length === 23 ? "#1b8b5e" : "#6b7f96" }}>
+                  {form.numero.replace(/\D/g, "").length}/23 dígitos (radicado: ciudad, corporación, especialidad, despacho, año, consecutivo, recurso)
+                </small>
               </Campo>
 
               <Campo label="Cliente (a quién representa el despacho)">
@@ -368,11 +463,11 @@ export default function Expedientes() {
         {detalle && (
           <div
             style={{ position: "fixed", inset: 0, background: "rgba(10,26,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
-            onClick={() => { setDetalle(null); setNuevaEtapa({ nombre: "", fecha_limite: "" }); }}
+            onClick={() => { setDetalle(null); setNuevaEtapa({ nombre: "", fecha_limite: "", dias_habiles: "" }); }}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              style={{ background: "white", borderRadius: "20px", padding: "28px", width: "460px", maxHeight: "85vh", overflowY: "auto" }}
+              style={{ background: "white", borderRadius: "20px", padding: "28px", width: "560px", maxWidth: "95vw", maxHeight: "88vh", overflowY: "auto" }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                 <h2 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -416,6 +511,9 @@ export default function Expedientes() {
                     <span style={{ fontSize: "14px" }}>
                       <strong>{etapa.nombre}</strong>
                       {etapa.fecha_limite && ` · ${etapa.fecha_limite}`}
+                      {etapa.fecha_limite && etapa.estado !== "completada" && (
+                        <span style={{ fontSize: "12px", ...ESTILO_PLAZO(etapa.dias_restantes) }}>{textoPlazo(etapa.dias_restantes)}</span>
+                      )}
                     </span>
                   </div>
                   <select value={etapa.estado} onChange={(e) => handleCambiarEstadoEtapa(etapa.id, e.target.value)} style={{ fontSize: "12px", padding: "3px 6px", borderRadius: "6px", border: "1px solid #d0d9e3" }}>
@@ -436,15 +534,68 @@ export default function Expedientes() {
                   style={{ ...inputStyle, flex: 2 }}
                 />
                 <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  placeholder="Días háb."
+                  title="Días hábiles desde hoy (excluye fines de semana y festivos de Colombia)"
+                  value={nuevaEtapa.dias_habiles}
+                  onChange={(e) => setNuevaEtapa({ ...nuevaEtapa, dias_habiles: e.target.value, fecha_limite: "" })}
+                  style={{ ...inputStyle, flex: 1, minWidth: 0 }}
+                />
+                <input
                   type="date"
+                  title="O indique la fecha límite directamente"
                   value={nuevaEtapa.fecha_limite}
+                  disabled={!!nuevaEtapa.dias_habiles}
                   onChange={(e) => setNuevaEtapa({ ...nuevaEtapa, fecha_limite: e.target.value })}
-                  style={{ ...inputStyle, flex: 1 }}
+                  style={{ ...inputStyle, flex: 1, minWidth: 0 }}
                 />
                 <button type="submit" disabled={guardandoEtapa} style={{ padding: "8px 14px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer", fontSize: "13px" }}>
                   +
                 </button>
               </form>
+              <p style={{ fontSize: "11px", color: "#6b7f96", marginTop: "6px" }}>
+                Los días hábiles excluyen sábados, domingos y festivos de Colombia. No considera vacancia judicial ni suspensiones de términos: verifique siempre el plazo con el despacho.
+              </p>
+
+              <h4 style={{ marginTop: "24px", marginBottom: "10px" }}>📎 Documentos</h4>
+              {errorDoc && <p style={{ color: "#c73a3a", fontSize: "13px", whiteSpace: "pre-line" }}>{errorDoc}</p>}
+              {documentos.length === 0 && <p style={{ color: "#6b7f96", fontSize: "13px" }}>Sin documentos adjuntos.</p>}
+              {documentos.map((d) => (
+                <div key={d.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px dashed #e9edf2", fontSize: "13px", gap: "8px" }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <strong>{d.nombre}</strong> · {formatoTamano(d.tamano)}
+                    <br />
+                    <span style={{ color: "#6b7f96" }}>
+                      {d.subido_por_nombre || "—"} · {new Date(d.subido_en).toLocaleString("es-CO")}
+                    </span>
+                  </span>
+                  <span style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                    <button type="button" onClick={() => handleDescargarDocumento(d)} style={{ padding: "4px 10px", borderRadius: "6px", border: "1px solid #d0d9e3", background: "white", cursor: "pointer" }}>Descargar</button>
+                    <button type="button" onClick={() => handleEliminarDocumento(d)} style={{ padding: "4px 10px", borderRadius: "6px", border: "none", background: "#fde8e8", color: "#c73a3a", cursor: "pointer" }}>Eliminar</button>
+                  </span>
+                </div>
+              ))}
+              <label style={{ display: "inline-block", marginTop: "10px", padding: "8px 14px", borderRadius: "8px", background: "#0a1a2b", color: "white", cursor: "pointer", fontSize: "13px", opacity: subiendo ? 0.6 : 1 }}>
+                {subiendo ? "Subiendo..." : "+ Adjuntar documento"}
+                <input type="file" onChange={handleSubirDocumento} disabled={subiendo} style={{ display: "none" }} accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt" />
+              </label>
+              <p style={{ fontSize: "11px", color: "#6b7f96" }}>PDF, Word, Excel, imágenes o texto. Máximo 5 MB.</p>
+
+              <h4 style={{ marginTop: "24px", marginBottom: "10px" }}>🕑 Historial de cambios</h4>
+              {historial.length === 0 && <p style={{ color: "#6b7f96", fontSize: "13px" }}>Sin cambios registrados.</p>}
+              {historial.map((h, i) => (
+                <div key={i} style={{ padding: "8px 0", borderBottom: "1px dashed #e9edf2", fontSize: "13px" }}>
+                  <strong>{h.tipo}</strong> · {h.usuario || "Sistema"} ·{" "}
+                  <span style={{ color: "#6b7f96" }}>{new Date(h.fecha).toLocaleString("es-CO")}</span>
+                  {(h.cambios || []).map((c, j) => (
+                    <div key={j} style={{ marginLeft: "12px", color: "#4a5a70" }}>
+                      {c.campo}: <s>{String(c.anterior ?? "—")}</s> → <strong>{String(c.nuevo ?? "—")}</strong>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -489,4 +640,4 @@ const inputStyle = {
 };
 
 const thStyle = { textAlign: "left", padding: "14px 16px", color: "#6b7f96", fontWeight: 600, borderBottom: "1px solid #e9edf2" };
-const tdStyle = { padding: "14px 16px" };
+const tdStyle = { padding: "14px 16px" };

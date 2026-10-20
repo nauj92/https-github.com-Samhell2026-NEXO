@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Wallet, Receipt, Search } from "lucide-react";
 import api from "../api";
+import { mensajeError } from "../utils/errores";
 import Layout from "../components/Layout";
 
 const estadoColors = {
@@ -112,7 +113,7 @@ export default function Facturacion() {
       setForm({ numero: "", expediente: "", cliente: "", concepto: "", monto: "", estado: "pendiente", fecha_vencimiento: "" });
       cargarFacturas();
     } catch (err) {
-      setFormError("No se pudo guardar la factura. Revisa que el número no esté repetido.");
+      setFormError(mensajeError(err, "No se pudo guardar la factura."));
     } finally {
       setGuardando(false);
     }
@@ -124,7 +125,7 @@ export default function Facturacion() {
       await api.delete(`/facturas/${id}/`);
       cargarFacturas();
     } catch (err) {
-      alert("No se pudo eliminar la factura.");
+      alert(mensajeError(err, "No se pudo eliminar la factura."));
     }
   };
 
@@ -264,7 +265,7 @@ export default function Facturacion() {
               style={{ background: "white", borderRadius: "20px", padding: "28px", width: "420px", maxHeight: "85vh", overflowY: "auto" }}
             >
               <h2 style={{ marginBottom: "16px" }}>{editandoId ? "✏️ Editar Factura" : "+ Nueva Factura"}</h2>
-              {formError && <p style={{ color: "#c73a3a", fontSize: "13px" }}>{formError}</p>}
+              {formError && <p style={{ color: "#c73a3a", fontSize: "13px", whiteSpace: "pre-line" }}>{formError}</p>}
 
               <Campo label="N° Factura">
                 <input name="numero" value={form.numero} onChange={handleChange} required style={inputStyle} />
@@ -401,4 +402,4 @@ const inputStyle = {
 };
 
 const thStyle = { textAlign: "left", padding: "14px 16px", color: "#6b7f96", fontWeight: 600, borderBottom: "1px solid #e9edf2" };
-const tdStyle = { padding: "14px 16px" };
+const tdStyle = { padding: "14px 16px" };

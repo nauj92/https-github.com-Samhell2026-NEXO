@@ -1,7 +1,8 @@
 from rest_framework.routers import DefaultRouter
+
 from .views import AudienciaViewSet
 
 router = DefaultRouter()
-router.register(r"audiencias", AudienciaViewSet)
+router.register(r"audiencias", AudienciaViewSet, basename="audiencia")
 
 urlpatterns = router.urls

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CalendarDays, Gavel, Search } from "lucide-react";
 import api from "../api";
+import { mensajeError } from "../utils/errores";
 import Layout from "../components/Layout";
 
 export default function Audiencias() {
@@ -108,7 +109,7 @@ export default function Audiencias() {
       setForm({ expediente: "", fecha_hora: "", lugar: "", observaciones: "" });
       cargarAudiencias();
     } catch (err) {
-      setFormError("No se pudo guardar la audiencia. Revisa los datos ingresados.");
+      setFormError(mensajeError(err, "No se pudo guardar la audiencia."));
     } finally {
       setGuardando(false);
     }
@@ -120,7 +121,7 @@ export default function Audiencias() {
       await api.delete(`/audiencias/${id}/`);
       cargarAudiencias();
     } catch (err) {
-      alert("No se pudo eliminar la audiencia.");
+      alert(mensajeError(err, "No se pudo eliminar la audiencia."));
     }
   };
 
@@ -264,7 +265,7 @@ export default function Audiencias() {
               style={{ background: "white", borderRadius: "20px", padding: "28px", width: "420px", maxHeight: "85vh", overflowY: "auto" }}
             >
               <h2 style={{ marginBottom: "16px" }}>{editandoId ? "✏️ Editar Audiencia" : "+ Nueva Audiencia"}</h2>
-              {formError && <p style={{ color: "#c73a3a", fontSize: "13px" }}>{formError}</p>}
+              {formError && <p style={{ color: "#c73a3a", fontSize: "13px", whiteSpace: "pre-line" }}>{formError}</p>}
 
               <Campo label="Expediente">
                 <select name="expediente" value={form.expediente} onChange={handleChange} required style={inputStyle}>
@@ -374,4 +375,4 @@ const inputStyle = {
 };
 
 const thStyle = { textAlign: "left", padding: "14px 16px", color: "#6b7f96", fontWeight: 600, borderBottom: "1px solid #e9edf2" };
-const tdStyle = { padding: "14px 16px" };
+const tdStyle = { padding: "14px 16px" };

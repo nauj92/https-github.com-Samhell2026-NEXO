@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Scale, User, Lock } from "lucide-react";
 import api from "../api";
+import { mensajeError } from "../utils/errores";
 
 const imagenesFondo = [
   "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=1920",
@@ -13,6 +14,7 @@ export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [enviando, setEnviando] = useState(false);
   const [focoUsuario, setFocoUsuario] = useState(false);
   const [focoPassword, setFocoPassword] = useState(false);
   const navigate = useNavigate();
@@ -24,13 +26,24 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    if (!username.trim() || !password) {
+      setError("Ingrese su usuario y contraseña.");
+      return;
+    }
+    setEnviando(true);
     try {
       const response = await api.post("/token/", { username, password });
       localStorage.setItem("access_token", response.data.access);
       localStorage.setItem("refresh_token", response.data.refresh);
       navigate("/dashboard");
     } catch (err) {
-      setError("Usuario o contraseña incorrectos.");
+      const st = err.response?.status;
+      if (st === 401 || st === 400) setError("Usuario o contraseña incorrectos.");
+      else if (st === 403 || st === 429)
+        setError("Cuenta bloqueada temporalmente por demasiados intentos fallidos. Espere una hora o pida a un administrador que la desbloquee.");
+      else setError(mensajeError(err));
+    } finally {
+      setEnviando(false);
     }
   };
 
@@ -148,7 +161,9 @@ export default function Login() {
 
         <button
           type="submit"
+          disabled={enviando}
           style={{
+            opacity: enviando ? 0.7 : 1,
             width: "100%",
             padding: "12px",
             background: "#0a1a2b",
@@ -160,9 +175,12 @@ export default function Login() {
             fontSize: "14px",
           }}
         >
-          Ingresar
+          {enviando ? "Ingresando..." : "Ingresar"}
         </button>
+        <p style={{ textAlign: "center", marginTop: "16px", fontSize: "13px" }}>
+          <Link to="/recuperar" style={{ color: "#4a5a70" }}>¿Olvidó su contraseña?</Link>
+        </p>
       </form>
     </div>
   );
-}
+}

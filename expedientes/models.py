@@ -66,3 +66,33 @@ class EtapaProceso(models.Model):
         verbose_name = "Etapa del proceso"
         verbose_name_plural = "Etapas del proceso"
         ordering = ["expediente", "orden"]
+
+
+class DocumentoExpediente(models.Model):
+    """Documento adjunto a un expediente (demanda, auto, poder, etc.).
+
+    El contenido se guarda en la base de datos porque el disco de los servicios
+    gratuitos de Render no es persistente. Por eso hay un límite de tamaño
+    (ver TAMANO_MAXIMO) y no es adecuado para un archivo judicial voluminoso.
+    """
+
+    TAMANO_MAXIMO = 5 * 1024 * 1024  # 5 MB
+    EXTENSIONES_PERMITIDAS = ("pdf", "doc", "docx", "xls", "xlsx", "jpg", "jpeg", "png", "txt")
+
+    expediente = models.ForeignKey(Expediente, on_delete=models.CASCADE, related_name="documentos")
+    nombre = models.CharField(max_length=255)
+    tipo_contenido = models.CharField(max_length=100, blank=True)
+    tamano = models.PositiveIntegerField()
+    contenido = models.BinaryField()
+    subido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="documentos_subidos"
+    )
+    subido_en = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.expediente.numero} - {self.nombre}"
+
+    class Meta:
+        verbose_name = "Documento del expediente"
+        verbose_name_plural = "Documentos del expediente"
+        ordering = ["-subido_en"]

@@ -132,9 +132,11 @@ AUTH_USER_MODEL = "usuarios.Usuario"
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es-co'
 
-TIME_ZONE = 'UTC'
+# Hora de Colombia: las fechas de audiencias y plazos se interpretan y se calculan en hora local.
+# (Los datos se siguen guardando en UTC en la base de datos.)
+TIME_ZONE = 'America/Bogota'
 
 USE_I18N = True
 
@@ -150,11 +152,25 @@ STATIC_URL = 'static/'
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+# Por omisión los correos (recuperación de contraseña) se imprimen en el registro del servidor.
+# Con RESEND_API_KEY se envían por la API HTTPS de Resend, porque los servicios gratuitos de Render
+# bloquean el SMTP saliente. También se puede definir EMAIL_BACKEND y EMAIL_HOST* por variables de entorno.
+RESEND_API_KEY = env("RESEND_API_KEY", default="")
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    default="core.email_backends.ResendEmailBackend" if RESEND_API_KEY else "django.core.mail.backends.console.EmailBackend",
+)
+EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_TIMEOUT = 10
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Lex-ERP <onboarding@resend.dev>")
+
+# Dirección del frontend, para armar el enlace del correo de recuperación de contraseña.
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
+PASSWORD_RESET_TIMEOUT = 3600  # segundos de vigencia del enlace
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -163,9 +179,12 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    "DEFAULT_THROTTLE_RATES": {
+        "recuperacion": "30/hour",
+    },
 }
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-]
+]

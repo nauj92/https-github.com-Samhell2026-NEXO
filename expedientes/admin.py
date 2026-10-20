@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Juzgado, Expediente, EtapaProceso
+from .models import DocumentoExpediente, EtapaProceso, Expediente, Juzgado
 
 
 @admin.register(Juzgado)
@@ -25,3 +25,11 @@ class ExpedienteAdmin(admin.ModelAdmin):
 class EtapaProcesoAdmin(admin.ModelAdmin):
     list_display = ("expediente", "nombre", "estado", "fecha_limite", "orden")
     list_filter = ("estado",)
+
+
+@admin.register(DocumentoExpediente)
+class DocumentoExpedienteAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "expediente", "tamano", "subido_por", "subido_en")
+    search_fields = ("nombre", "expediente__numero")
+    readonly_fields = ("tamano", "subido_por", "subido_en")
+    exclude = ("contenido",)

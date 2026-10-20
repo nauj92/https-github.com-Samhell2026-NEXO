@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, FolderOpen, Scale, Users, Wallet, Flag, LogOut } from "lucide-react";
+import { LayoutDashboard, FolderOpen, Scale, Users, Wallet, Flag, LogOut, UserCog } from "lucide-react";
 import api from "../api";
 
 const navItems = [
@@ -26,6 +26,10 @@ export default function Sidebar() {
   useEffect(() => {
     api.get("/perfil/").then((response) => setPerfil(response.data)).catch(() => {});
   }, []);
+
+  const items = perfil?.es_directivo
+    ? [...navItems, { to: "/usuarios", label: "Usuarios", Icon: UserCog }]
+    : navItems;
 
   const handleLogout = () => {
     localStorage.removeItem("access_token");
@@ -75,7 +79,7 @@ export default function Sidebar() {
       </div>
 
       <nav style={{ flex: 1 }}>
-        {navItems.map(({ to, label, Icon }) => (
+        {items.map(({ to, label, Icon }) => (
           <NavLink
             key={to}
             to={to}
@@ -158,4 +162,4 @@ export default function Sidebar() {
       </button>
     </aside>
   );
-}
+}

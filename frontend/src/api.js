@@ -20,7 +20,10 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const url = originalRequest?.url || "";
+    const esAuth = url.includes("/token/") || url.includes("/password-reset");
+
+    if (error.response?.status === 401 && !originalRequest._retry && !esAuth) {
       originalRequest._retry = true;
 
       const refreshToken = localStorage.getItem("refresh_token");
@@ -50,4 +53,4 @@ api.interceptors.response.use(
   }
 );
 
-export default api;
+export default api;

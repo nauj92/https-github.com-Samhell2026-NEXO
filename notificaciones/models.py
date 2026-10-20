@@ -15,6 +15,9 @@ class Notificacion(models.Model):
     tipo = models.CharField(max_length=20, choices=Tipo.choices, default=Tipo.GENERAL)
     mensaje = models.CharField(max_length=255)
     leida = models.BooleanField(default=False)
+    # Identifica el hecho que originó una notificación automática, para no repetirla
+    # (p. ej. "audiencia:15:2026-10-21"). Vacía en las notificaciones creadas a mano.
+    clave = models.CharField(max_length=120, blank=True, default="", db_index=True)
     creada_en = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -23,4 +26,4 @@ class Notificacion(models.Model):
     class Meta:
         verbose_name = "Notificación"
         verbose_name_plural = "Notificaciones"
-        ordering = ["-creada_en"]
+        ordering = ["-creada_en"]

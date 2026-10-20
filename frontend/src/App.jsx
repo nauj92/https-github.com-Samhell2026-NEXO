@@ -7,6 +7,9 @@ import Clientes from "./pages/Clientes";
 import Facturacion from "./pages/Facturacion";
 import Reportes from "./pages/Reportes";
 import Configuracion from "./pages/Configuracion";
+import Usuarios from "./pages/Usuarios";
+import RecuperarPassword from "./pages/RecuperarPassword";
+import RestablecerPassword from "./pages/RestablecerPassword";
 
 export default function App() {
   return (
@@ -14,6 +17,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/login" />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/recuperar" element={<RecuperarPassword />} />
+        <Route path="/restablecer/:uid/:token" element={<RestablecerPassword />} />
+        <Route path="/usuarios" element={<Usuarios />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/expedientes" element={<Expedientes />} />
         <Route path="/audiencias" element={<Audiencias />} />
@@ -24,4 +30,4 @@ export default function App() {
       </Routes>
     </BrowserRouter>
   );
-}
+}

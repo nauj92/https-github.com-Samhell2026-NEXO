@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Users, User, Search } from "lucide-react";
 import api from "../api";
+import { mensajeError } from "../utils/errores";
 import Layout from "../components/Layout";
 
 export default function Clientes() {
@@ -106,7 +107,7 @@ export default function Clientes() {
       setForm({ nombre: "", tipo_documento: "CC", numero_documento: "", telefono: "", email: "", direccion: "" });
       cargarClientes();
     } catch (err) {
-      setFormError("No se pudo guardar el cliente. Revisa que el documento no esté repetido.");
+      setFormError(mensajeError(err, "No se pudo guardar el cliente."));
     } finally {
       setGuardando(false);
     }
@@ -118,7 +119,7 @@ export default function Clientes() {
       await api.delete(`/clientes/${id}/`);
       cargarClientes();
     } catch (err) {
-      alert("No se pudo eliminar el cliente.");
+      alert(mensajeError(err, "No se pudo eliminar el cliente."));
     }
   };
 
@@ -239,7 +240,7 @@ export default function Clientes() {
               style={{ background: "white", borderRadius: "20px", padding: "28px", width: "420px", maxHeight: "85vh", overflowY: "auto" }}
             >
               <h2 style={{ marginBottom: "16px" }}>{editandoId ? "✏️ Editar Cliente" : "+ Nuevo Cliente"}</h2>
-              {formError && <p style={{ color: "#c73a3a", fontSize: "13px" }}>{formError}</p>}
+              {formError && <p style={{ color: "#c73a3a", fontSize: "13px", whiteSpace: "pre-line" }}>{formError}</p>}
 
               <Campo label="Nombre completo">
                 <input name="nombre" value={form.nombre} onChange={handleChange} required style={inputStyle} />
@@ -340,4 +341,4 @@ const inputStyle = {
   border: "1px solid #d0d9e3",
   fontSize: "14px",
   boxSizing: "border-box",
-};
+};

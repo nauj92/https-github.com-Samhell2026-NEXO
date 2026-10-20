@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api";
+import { mensajeError } from "../utils/errores";
 import Layout from "../components/Layout";
 import { Settings, User, Lock, Eye, EyeOff } from "lucide-react";
 
@@ -37,7 +38,7 @@ export default function Configuracion() {
       setPerfil(response.data);
       setMensajePerfil("✅ Perfil actualizado correctamente.");
     } catch (err) {
-      setMensajePerfil("❌ No se pudo actualizar el perfil.");
+      setMensajePerfil(`❌ ${mensajeError(err, "No se pudo actualizar el perfil.")}`);
     } finally {
       setGuardandoPerfil(false);
     }
@@ -65,8 +66,7 @@ export default function Configuracion() {
       setMensajePassword("✅ Contraseña actualizada correctamente.");
       setPasswordForm({ password_actual: "", password_nueva: "", password_confirmar: "" });
     } catch (err) {
-      const detalle = err.response?.data?.detail || "No se pudo cambiar la contraseña.";
-      setMensajePassword(`❌ ${detalle}`);
+      setMensajePassword(`❌ ${mensajeError(err, "No se pudo cambiar la contraseña.")}`);
     } finally {
       setGuardandoPassword(false);
     }
@@ -120,7 +120,7 @@ export default function Configuracion() {
                   <input name="telefono" value={perfil.telefono || ""} onChange={handleChangePerfil} style={inputStyle} />
                 </Campo>
 
-                {mensajePerfil && <p style={{ fontSize: "13px" }}>{mensajePerfil}</p>}
+                {mensajePerfil && <p style={{ fontSize: "13px", whiteSpace: "pre-line" }}>{mensajePerfil}</p>}
 
                 <button
                   type="submit"
@@ -197,7 +197,7 @@ export default function Configuracion() {
                 </div>
               </Campo>
 
-              {mensajePassword && <p style={{ fontSize: "13px" }}>{mensajePassword}</p>}
+              {mensajePassword && <p style={{ fontSize: "13px", whiteSpace: "pre-line" }}>{mensajePassword}</p>}
 
               <button
                 type="submit"
@@ -230,4 +230,4 @@ const inputStyle = {
   border: "1px solid #d0d9e3",
   fontSize: "14px",
   boxSizing: "border-box",
-};
+};

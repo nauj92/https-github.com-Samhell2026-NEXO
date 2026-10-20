@@ -1,8 +1,12 @@
 from rest_framework import viewsets
-from .models import Factura
+
+from core.permisos import facturas_visibles
+
 from .serializers import FacturaSerializer
 
 
 class FacturaViewSet(viewsets.ModelViewSet):
-    queryset = Factura.objects.all()
     serializer_class = FacturaSerializer
+
+    def get_queryset(self):
+        return facturas_visibles(self.request.user).select_related("cliente", "expediente")

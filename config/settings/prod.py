@@ -25,3 +25,6 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # CORS: se configura con la URL real del frontend una vez desplegado
 CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+
+# Enlace del frontend para el correo de recuperación de contraseña (por omisión, el primer origen CORS)
+FRONTEND_URL = os.environ.get("FRONTEND_URL") or CORS_ALLOWED_ORIGINS[0]
