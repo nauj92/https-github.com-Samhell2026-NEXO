@@ -111,10 +111,17 @@ Motor: **PostgreSQL 17**.
 - **Expediente** — entidad central, con historial de auditoría (`django-simple-history`).
 - **EtapaProceso** — etapas del proceso judicial, relacionadas con un Expediente.
 - **DocumentoExpediente** — archivos adjuntos de un Expediente (máx. 5 MB, guardados en la base de datos).
-- **Audiencia** — relacionada con un Expediente.
+- **Audiencia** — audiencia o diligencia judicial (`tipo`, `clase`) relacionada con un Expediente.
 - **Cliente** — relacionado formalmente con Expediente y Factura.
 - **Factura** — relacionada opcionalmente con Expediente, y con Cliente.
 - **Notificacion** — relacionada con Usuario; el campo `clave` evita duplicados.
+- **Liquidacion** — liquidación guardada (laboral, crédito, alimentos o cuotas): datos de entrada y resultado en JSON, total, expediente opcional y quién la creó.
+- **Vigilancia** — proceso vigilado (uno por Expediente), con los días de alerta sin movimiento.
+- **ActuacionVigilancia** — actuaciones que se registran de un proceso vigilado.
+- **EnlaceVigilancia** — enlaces anclados a un proceso vigilado (título, dirección http/https y nota).
+- **Demanda** — A1: demanda en elaboración o radicada, con estados, fechas de radicación, inadmisión y admisión, y borrador editable.
+- **ContestacionDemanda** — B1: contestación con fecha de notificación, término en días hábiles, excepciones, pruebas y borrador.
+- **Citacion** — citación (art. 291 CGP) o aviso (art. 292 CGP) con mensajería, guía y fechas de envío, entrega y notificación.
 
 ### Diagrama de Entidad-Relación
 
@@ -128,6 +135,21 @@ erDiagram
     EXPEDIENTE ||--o{ ETAPAPROCESO : "contiene"
     EXPEDIENTE ||--o{ AUDIENCIA : "tiene"
     EXPEDIENTE ||--o{ FACTURA : "genera"
+    EXPEDIENTE ||--o{ DOCUMENTOEXPEDIENTE : "adjunta"
+    EXPEDIENTE ||--o| VIGILANCIA : "se vigila"
+    EXPEDIENTE ||--o{ LIQUIDACION : "se liquida"
+    EXPEDIENTE ||--o{ DEMANDA : "origina"
+    EXPEDIENTE ||--o{ CONTESTACIONDEMANDA : "origina"
+    EXPEDIENTE ||--o{ CITACION : "origina"
+    VIGILANCIA ||--o{ ACTUACIONVIGILANCIA : "registra"
+    VIGILANCIA ||--o{ ENLACEVIGILANCIA : "ancla"
+    DEMANDA ||--o{ CITACION : "notifica"
+    CLIENTE ||--o{ DEMANDA : "demanda"
+    CLIENTE ||--o{ CONTESTACIONDEMANDA : "contesta"
+    USUARIO ||--o{ DEMANDA : "abogado_responsable"
+    USUARIO ||--o{ CONTESTACIONDEMANDA : "abogado_responsable"
+    USUARIO ||--o{ CITACION : "abogado_responsable"
+    USUARIO ||--o{ LIQUIDACION : "crea"
 
     USUARIO {
         int id PK
@@ -181,6 +203,8 @@ erDiagram
     AUDIENCIA {
         int id PK
         int expediente_id FK
+        string tipo
+        string clase
         datetime fecha_hora
         string lugar
         string observaciones
@@ -206,6 +230,102 @@ erDiagram
         string mensaje
         boolean leida
         datetime creada_en
+    }
+
+    DOCUMENTOEXPEDIENTE {
+        int id PK
+        int expediente_id FK
+        string nombre
+        string tipo_contenido
+        int tamano
+        binary contenido
+        int subido_por_id FK
+        datetime subido_en
+    }
+
+    LIQUIDACION {
+        int id PK
+        string tipo
+        string referencia
+        int expediente_id FK
+        json datos
+        json resultado
+        decimal total
+        int creado_por_id FK
+        datetime creado_en
+    }
+
+    VIGILANCIA {
+        int id PK
+        int expediente_id FK
+        boolean activa
+        int dias_alerta
+        string observaciones
+        datetime creado_en
+    }
+
+    ACTUACIONVIGILANCIA {
+        int id PK
+        int vigilancia_id FK
+        date fecha
+        string descripcion
+        int registrada_por_id FK
+    }
+
+    ENLACEVIGILANCIA {
+        int id PK
+        int vigilancia_id FK
+        string titulo
+        string url
+        string nota
+        int creado_por_id FK
+    }
+
+    DEMANDA {
+        int id PK
+        string clase_proceso
+        int cliente_id FK
+        int expediente_id FK
+        int juzgado_id FK
+        string demandante
+        string demandado
+        decimal cuantia
+        string estado
+        date fecha_radicacion
+        date fecha_inadmision
+        date fecha_admision
+        int abogado_responsable_id FK
+        string borrador
+    }
+
+    CONTESTACIONDEMANDA {
+        int id PK
+        string clase_proceso
+        string demandante
+        string demandado
+        int cliente_id FK
+        int expediente_id FK
+        date fecha_notificacion
+        int dias_termino
+        string estado
+        date fecha_presentacion
+        int abogado_responsable_id FK
+        string borrador
+    }
+
+    CITACION {
+        int id PK
+        int demanda_id FK
+        int expediente_id FK
+        string destinatario
+        string tipo
+        string ubicacion
+        string estado
+        date fecha_envio
+        string guia
+        date fecha_entrega
+        date fecha_notificacion
+        int abogado_responsable_id FK
     }
 ```
 
