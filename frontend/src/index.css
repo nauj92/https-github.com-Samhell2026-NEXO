@@ -12,3 +12,59 @@ html, body, #root {
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
+
+/* ---------- Diseño adaptable (celular, tableta y escritorio) ---------- */
+body { overflow-x: hidden; }
+img, svg { max-width: 100%; }
+
+.app-layout { display: flex; min-height: 100vh; }
+.contenido { flex: 1; min-width: 0; }
+.menu-lateral { position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0; }
+.barra-movil, .menu-fondo, .boton-cerrar-menu { display: none; }
+
+/* Tableta (incluye iPad Pro y Surface) y celular: el menú pasa a ser un panel deslizable */
+@media (max-width: 1100px) {
+  .app-layout { display: block; }
+  .barra-movil {
+    display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 40;
+    background: #0a1a2b; color: white; padding: 10px 14px; font-weight: 700; font-size: 15px;
+  }
+  .boton-menu, .boton-cerrar-menu {
+    background: transparent; border: none; color: white; cursor: pointer; padding: 6px; display: flex;
+  }
+  .menu-lateral {
+    position: fixed; top: 0; left: 0; bottom: 0; height: 100%; z-index: 60;
+    transform: translateX(-105%); transition: transform 0.25s ease; box-shadow: 0 0 30px rgba(0,0,0,0.4);
+  }
+  .menu-lateral.abierto { transform: translateX(0); }
+  .menu-lateral aside { min-height: 100% !important; width: min(280px, 85vw) !important; }
+  .boton-cerrar-menu { display: flex; position: absolute; top: 12px; right: 10px; z-index: 2; color: #b0c4de; }
+  .menu-fondo { display: block; position: fixed; inset: 0; background: rgba(10,26,43,0.55); z-index: 50; }
+
+  /* Encabezados y contenido con menos margen */
+  header[style*="padding: 16px 32px"] { padding: 12px 16px !important; flex-wrap: wrap; gap: 10px; }
+  main[style*="padding: 32px"] { padding: 16px !important; }
+  div[style*="padding: 32px"] { padding: 16px !important; }
+  header[style*="padding: 16px 32px"] > div { flex-wrap: wrap; }
+  header[style*="padding: 16px 32px"] [style*="width: 220px"] { width: 100% !important; min-width: 0; }
+
+  /* Formularios y cuadrículas de dos columnas pasan a una */
+  [style*="grid-template-columns: 1fr 1fr;"] { grid-template-columns: 1fr !important; }
+  main[style*="minmax(320px, 420px)"] { grid-template-columns: 1fr !important; }
+
+  /* Ventanas emergentes: nunca más anchas que la pantalla */
+  [style*="position: fixed"][style*="inset: 0"] > * { width: 100% !important; max-width: 96vw !important; padding: 18px !important; }
+  [style*="position: fixed"][style*="inset: 0"] { padding: 8px; }
+}
+
+/* Celulares pequeños */
+@media (max-width: 480px) {
+  table { font-size: 13px !important; }
+  th, td { padding: 8px 10px !important; }
+  h1 { font-size: 22px; }
+}
+
+/* Impresión: solo el contenido */
+@media print {
+  .menu-lateral, .barra-movil, .menu-fondo { display: none !important; }
+}

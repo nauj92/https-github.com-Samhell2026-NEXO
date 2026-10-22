@@ -325,7 +325,7 @@ export default function Expedientes() {
                 <FiltroBadge label={`Cerrados (${conteoEstados.cerrado})`} activo={filtroEstado === "cerrado"} onClick={() => setFiltroEstado("cerrado")} bg="#e9ecf0" color="#5b6f84" />
               </div>
 
-              <div style={{ background: "white", borderRadius: "16px", border: "1px solid #eef2f6", overflow: "hidden" }}>
+              <div style={{ background: "white", borderRadius: "16px", border: "1px solid #eef2f6", overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
                   <thead>
                     <tr style={{ background: "#f8fafc" }}>
@@ -640,4 +640,4 @@ const inputStyle = {
 };
 
 const thStyle = { textAlign: "left", padding: "14px 16px", color: "#6b7f96", fontWeight: 600, borderBottom: "1px solid #e9edf2" };
-const tdStyle = { padding: "14px 16px" };
+const tdStyle = { padding: "14px 16px" };

@@ -76,7 +76,8 @@ export default function Login() {
           background: "white",
           padding: "40px",
           borderRadius: "16px",
-          width: "340px",
+          width: "100%",
+          maxWidth: "340px",
           boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
         }}
       >

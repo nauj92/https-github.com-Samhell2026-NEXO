@@ -122,6 +122,7 @@ export default function Abogados() {
         {cargando ? (
           <p>Cargando...</p>
         ) : (
+          <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: "12px", overflow: "hidden" }}>
             <thead>
               <tr style={{ background: "#f1f4f9", textAlign: "left", fontSize: "13px" }}>
@@ -149,6 +150,7 @@ export default function Abogados() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
 
         {directivo && form && (

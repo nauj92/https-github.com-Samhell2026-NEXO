@@ -188,7 +188,7 @@ export default function Audiencias() {
           {cargando && <p>Cargando audiencias...</p>}
 
           {!cargando && !error && (
-            <div style={{ background: "white", borderRadius: "16px", border: "1px solid #eef2f6", overflow: "hidden" }}>
+            <div style={{ background: "white", borderRadius: "16px", border: "1px solid #eef2f6", overflowX: "auto" }}>
               <div style={{ padding: "20px 24px 0" }}>
                 <h3 style={{ marginBottom: "16px", color: "#1a2c3e", display: "flex", alignItems: "center", gap: "8px" }}>
                   <CalendarDays size={18} />
