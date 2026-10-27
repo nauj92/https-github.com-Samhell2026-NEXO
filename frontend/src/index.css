@@ -50,6 +50,7 @@ img, svg { max-width: 100%; }
 
   /* Formularios y cuadrículas de dos columnas pasan a una */
   [style*="grid-template-columns: 1fr 1fr;"] { grid-template-columns: 1fr !important; }
+  [style*="grid-template-columns: 220px 1fr;"] { grid-template-columns: 1fr !important; padding-left: 0 !important; }
   main[style*="minmax(320px, 420px)"] { grid-template-columns: 1fr !important; }
 
   /* Ventanas emergentes: nunca más anchas que la pantalla */
