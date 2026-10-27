@@ -1,7 +1,7 @@
 import { useState } from "react";
 import SelectorBuscable from "./SelectorBuscable";
 import { inputStyle } from "./ui";
-import { CLASES_PROCESO, ESPECIALIDADES, todasLasClases } from "../data/catalogos";
+import { ESPECIALIDADES, gruposDeClases, todasLasClases } from "../data/catalogos";
 
 const OTRA = "__otra__";
 
@@ -12,16 +12,15 @@ export default function SelectorClaseProceso({ value, onChange, required = false
   const [especialidad, setEspecialidad] = useState("");
   const [otra, setOtra] = useState(Boolean(value) && !enCatalogo);
 
-  const grupos = Object.keys(CLASES_PROCESO);
-  const lista = todas.filter((c) => !especialidad || c.grupo === especialidad);
-  const especialidades = ESPECIALIDADES.filter((e) => grupos.includes(e));
+  const grupos = gruposDeClases(especialidad);
+  const lista = todas.filter((c) => grupos.includes(c.grupo));
 
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 14px", marginBottom: "10px" }}>
         <div>
           <label style={{ fontSize: "12px", color: "#6b7f96", display: "block", marginBottom: "4px" }}>Especialidad</label>
-          <SelectorBuscable opciones={especialidades.map((e) => ({ value: e, label: e }))} value={especialidad} onChange={setEspecialidad} />
+          <SelectorBuscable opciones={ESPECIALIDADES.map((e) => ({ value: e, label: e }))} value={especialidad} onChange={setEspecialidad} />
         </div>
         <div>
           <label style={{ fontSize: "12px", color: "#6b7f96", display: "block", marginBottom: "4px" }}>Clase de proceso</label>
@@ -34,6 +33,7 @@ export default function SelectorClaseProceso({ value, onChange, required = false
               onChange(v);
             }}
             vacio="Seleccione una clase"
+            vacioMensaje="Sin clases para esta especialidad: use «Otra clase»"
             required={required && !otra}
           />
         </div>

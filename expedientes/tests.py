@@ -346,10 +346,10 @@ class DespachosRamaJudicialTests(BaseApi):
 
         d = interpretar_despacho("110013109032 - JUZGADO 032 PENAL DEL CIRCUITO CON FUNCIÓN DE CONOCIMIENTO DE BOGOTÁ")
         self.assertEqual(d["codigo"], "110013109032")
-        self.assertEqual(d["departamento"], "BOGOTÁ, D.C.")
+        self.assertEqual(d["departamento"], "BOGOTÁ")
         self.assertEqual(d["municipio"], "BOGOTÁ")
         self.assertEqual(d["entidad"], "JUZGADO DE CIRCUITO")
-        self.assertEqual(d["especialidad"], "PENAL")
+        self.assertEqual(d["especialidad"], "PENAL CON FUNCIÓN DE CONOCIMIENTO")
 
     def test_tribunal_no_toma_el_departamento_como_municipio(self):
         from expedientes.despachos import interpretar_despacho
@@ -358,7 +358,7 @@ class DespachosRamaJudicialTests(BaseApi):
         self.assertEqual(d["departamento"], "ANTIOQUIA")
         self.assertEqual(d["municipio"], "")
         self.assertEqual(d["entidad"], "TRIBUNAL SUPERIOR")
-        self.assertEqual(d["especialidad"], "CIVIL FAMILIA")
+        self.assertEqual(d["especialidad"], "CIVIL - FAMILIA")
 
     def test_municipio_con_nombre_compuesto(self):
         from expedientes.despachos import interpretar_despacho
@@ -392,7 +392,7 @@ class DespachosRamaJudicialTests(BaseApi):
         self.como(self.abogado)
         r = self.client.post("/api/juzgados/", {
             "nombre": "JUZGADO 004 CIVIL MUNICIPAL DE BOGOTÁ", "codigo": "110014003004",
-            "departamento": "BOGOTÁ, D.C.", "municipio": "BOGOTÁ", "entidad": "JUZGADO MUNICIPAL", "especialidad": "CIVIL",
+            "departamento": "BOGOTÁ", "municipio": "BOGOTÁ", "entidad": "JUZGADO MUNICIPAL", "especialidad": "CIVIL",
         }, format="json")
         self.assertEqual(r.status_code, 201, r.data)
         self.assertEqual(r.data["etiqueta"], "110014003004 - JUZGADO 004 CIVIL MUNICIPAL DE BOGOTÁ")
@@ -422,3 +422,16 @@ class EquivalenciaJuzgadosTests(BaseApi):
         self.exp_propio.refresh_from_db()
         self.assertEqual(self.exp_propio.juzgado.codigo, "110013103012")
         self.assertFalse(Juzgado.objects.filter(pk=viejo.pk).exists())
+
+
+class ClasificacionPorCodigoTests(SimpleTestCase):
+    def test_entidad_y_especialidad_salen_del_codigo_como_en_el_portal(self):
+        from expedientes.despachos import interpretar_despacho
+
+        d = interpretar_despacho("760013110007 - JUZGADO 007 DE FAMILIA DEL CIRCUITO DE CALI")
+        self.assertEqual((d["departamento"], d["entidad"], d["especialidad"]), ("VALLE DEL CAUCA", "JUZGADO DE CIRCUITO", "FAMILIA"))
+        d = interpretar_despacho("110014303001 - JUZGADO 001 CIVIL MUNICIPAL DE EJECUCIÓN DE SENTENCIAS DE BOGOTÁ")
+        self.assertEqual(d["entidad"], "JUZGADO MUNICIPAL DE EJECUCIÓN")
+        self.assertEqual(d["especialidad"], "CIVIL")
+        d = interpretar_despacho("050002205000 - SALA LABORAL DEL TRIBUNAL SUPERIOR DE ANTIOQUIA")
+        self.assertEqual((d["entidad"], d["especialidad"]), ("TRIBUNAL SUPERIOR", "LABORAL"))
