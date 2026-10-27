@@ -3,6 +3,7 @@ import { FolderOpen, Scale, Search } from "lucide-react";
 import api from "../api";
 import { mensajeError } from "../utils/errores";
 import Layout from "../components/Layout";
+import SelectorDespacho from "../components/SelectorDespacho";
 
 const ESTILO_PLAZO = (dias) =>
   dias == null ? {} : dias < 0 ? { color: "#c73a3a", fontWeight: 700 } : dias <= 3 ? { color: "#a8681a", fontWeight: 700 } : { color: "#1b8b5e" };
@@ -410,14 +411,7 @@ export default function Expedientes() {
                 </select>
               </Campo>
 
-              <Campo label="Juzgado">
-                <select name="juzgado" value={form.juzgado} onChange={handleChange} required style={inputStyle}>
-                  <option value="">Selecciona un juzgado</option>
-                  {juzgados.map((j) => (
-                    <option key={j.id} value={j.id}>{j.nombre}</option>
-                  ))}
-                </select>
-              </Campo>
+              <SelectorDespacho juzgados={juzgados} value={form.juzgado} onChange={(v) => setForm({ ...form, juzgado: v })} required vacio="Seleccione un despacho" />
 
               <Campo label="Demandante">
                 <input name="demandante" value={form.demandante} onChange={handleChange} required style={inputStyle} />
@@ -640,4 +634,4 @@ const inputStyle = {
 };
 
 const thStyle = { textAlign: "left", padding: "14px 16px", color: "#6b7f96", fontWeight: 600, borderBottom: "1px solid #e9edf2" };
-const tdStyle = { padding: "14px 16px" };
+const tdStyle = { padding: "14px 16px" };

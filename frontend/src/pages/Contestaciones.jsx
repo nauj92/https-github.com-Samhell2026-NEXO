@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { FileSignature } from "lucide-react";
 import api from "../api";
 import Layout from "../components/Layout";
+import SelectorDespacho from "../components/SelectorDespacho";
 import Borrador from "../components/Borrador";
 import { mensajeError } from "../utils/errores";
 import { fecha } from "../utils/formato";
@@ -221,12 +222,9 @@ export default function Contestaciones() {
                   {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                 </select>
               </Campo>
-              <Campo label="Juzgado">
-                <select value={form.juzgado} onChange={set("juzgado")} style={inputStyle}>
-                  <option value="">Sin asignar</option>
-                  {juzgados.map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
-                </select>
-              </Campo>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <SelectorDespacho juzgados={juzgados} value={form.juzgado} onChange={(v) => setForm({ ...form, juzgado: v })} />
+              </div>
             </div>
             <Campo label="Expediente">
               <select value={form.expediente} onChange={set("expediente")} style={inputStyle}>

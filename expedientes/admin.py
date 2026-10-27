@@ -4,8 +4,9 @@ from .models import DocumentoExpediente, EtapaProceso, Expediente, Juzgado
 
 @admin.register(Juzgado)
 class JuzgadoAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "ciudad", "materia")
-    search_fields = ("nombre", "ciudad")
+    list_display = ("codigo", "nombre", "departamento", "municipio", "entidad", "especialidad")
+    list_filter = ("departamento", "entidad", "especialidad")
+    search_fields = ("codigo", "nombre", "municipio")
 
 
 class EtapaProcesoInline(admin.TabularInline):

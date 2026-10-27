@@ -10,9 +10,28 @@ from .validators import normalizar_radicado, validar_radicado
 
 
 class JuzgadoSerializer(serializers.ModelSerializer):
+    etiqueta = serializers.CharField(read_only=True)
+
     class Meta:
         model = Juzgado
         fields = "__all__"
+        extra_kwargs = {"codigo": {"required": False, "allow_null": True}}
+
+    def validate_codigo(self, value):
+        if value in (None, ""):
+            return None
+        value = value.strip()
+        if not (value.isdigit() and len(value) == 12):
+            raise serializers.ValidationError("El código del despacho debe tener 12 dígitos.")
+        return value
+
+    def validate(self, attrs):
+        # Si solo llegan los datos de la Rama Judicial, se completan los campos antiguos (ciudad y materia).
+        if not attrs.get("ciudad") and attrs.get("municipio"):
+            attrs["ciudad"] = attrs["municipio"]
+        if not attrs.get("materia") and attrs.get("especialidad"):
+            attrs["materia"] = attrs["especialidad"].lower()
+        return attrs
 
     def validate_nombre(self, value):
         value = " ".join(value.split())

@@ -1,3 +1,4 @@
+import io
 from datetime import timedelta
 from unittest import mock
 
@@ -9,7 +10,7 @@ from rest_framework.test import APITestCase
 
 from core.plazos import sumar_dias_habiles
 from core.testutils import crear_cliente, crear_expediente, crear_juzgado, crear_usuario, radicado
-from expedientes.models import DocumentoExpediente, EtapaProceso, Expediente
+from expedientes.models import DocumentoExpediente, EtapaProceso, Expediente, Juzgado
 from expedientes.validators import formatear_radicado, normalizar_radicado, validar_radicado
 from facturacion.models import Factura
 
@@ -337,3 +338,87 @@ class DashboardApiTests(BaseApi):
         datos = self.client.get("/api/dashboard/stats/").data
         self.assertEqual(float(datos["ingresos_mes"]), 2500.0)
         self.assertEqual(float(datos["por_cobrar"]), 1000.0)
+
+
+class DespachosRamaJudicialTests(BaseApi):
+    def test_interpreta_el_formato_de_la_rama_judicial(self):
+        from expedientes.despachos import interpretar_despacho
+
+        d = interpretar_despacho("110013109032 - JUZGADO 032 PENAL DEL CIRCUITO CON FUNCIÓN DE CONOCIMIENTO DE BOGOTÁ")
+        self.assertEqual(d["codigo"], "110013109032")
+        self.assertEqual(d["departamento"], "BOGOTÁ, D.C.")
+        self.assertEqual(d["municipio"], "BOGOTÁ")
+        self.assertEqual(d["entidad"], "JUZGADO DE CIRCUITO")
+        self.assertEqual(d["especialidad"], "PENAL")
+
+    def test_tribunal_no_toma_el_departamento_como_municipio(self):
+        from expedientes.despachos import interpretar_despacho
+
+        d = interpretar_despacho("050002213000 - SALA CIVIL FAMILIA DEL TRIBUNAL SUPERIOR DE ANTIOQUIA")
+        self.assertEqual(d["departamento"], "ANTIOQUIA")
+        self.assertEqual(d["municipio"], "")
+        self.assertEqual(d["entidad"], "TRIBUNAL SUPERIOR")
+        self.assertEqual(d["especialidad"], "CIVIL FAMILIA")
+
+    def test_municipio_con_nombre_compuesto(self):
+        from expedientes.despachos import interpretar_despacho
+
+        d = interpretar_despacho("520013103001 - JUZGADO 001 CIVIL DEL CIRCUITO DE SAN JUAN DE PASTO")
+        self.assertEqual(d["municipio"], "SAN JUAN DE PASTO")
+
+    def test_lineas_invalidas_se_ignoran(self):
+        from expedientes.despachos import interpretar_despacho
+
+        self.assertIsNone(interpretar_despacho("Todos"))
+        self.assertIsNone(interpretar_despacho("123 - JUZGADO"))
+
+    def test_importar_es_idempotente(self):
+        import os
+        import tempfile
+
+        from django.core.management import call_command
+
+        with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as f:
+            f.write("Todos\n110013109032 - JUZGADO 032 PENAL DEL CIRCUITO CON FUNCIÓN DE CONOCIMIENTO DE BOGOTÁ\n")
+            ruta = f.name
+        try:
+            call_command("importar_despachos", ruta, stdout=io.StringIO())
+            call_command("importar_despachos", ruta, stdout=io.StringIO())
+        finally:
+            os.unlink(ruta)
+        self.assertEqual(Juzgado.objects.filter(codigo="110013109032").count(), 1)
+
+    def test_api_devuelve_etiqueta_y_valida_codigo(self):
+        self.como(self.abogado)
+        r = self.client.post("/api/juzgados/", {
+            "nombre": "JUZGADO 004 CIVIL MUNICIPAL DE BOGOTÁ", "codigo": "110014003004",
+            "departamento": "BOGOTÁ, D.C.", "municipio": "BOGOTÁ", "entidad": "JUZGADO MUNICIPAL", "especialidad": "CIVIL",
+        }, format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(r.data["etiqueta"], "110014003004 - JUZGADO 004 CIVIL MUNICIPAL DE BOGOTÁ")
+        self.assertEqual(r.data["ciudad"], "BOGOTÁ")
+        malo = self.client.post("/api/juzgados/", {"nombre": "Juzgado de prueba", "codigo": "123"}, format="json")
+        self.assertEqual(malo.status_code, 400)
+
+
+class EquivalenciaJuzgadosTests(BaseApi):
+    def test_reasigna_expedientes_al_despacho_real(self):
+        from django.core.management import call_command
+
+        from expedientes.despachos import interpretar_despacho
+
+        viejo = self.exp_propio.juzgado
+        viejo.nombre, viejo.ciudad, viejo.codigo = "Juzgado 12 Civil del Circuito de Bogotá", "Bogotá D.C.", None
+        viejo.save()
+        for linea in (
+            "110013103012 - JUZGADO 012 CIVIL DEL CIRCUITO DE BOGOTÁ",
+            "110014003012 - JUZGADO 012 CIVIL MUNICIPAL DE BOGOTÁ",
+            "110013103012 - JUZGADO 012 CIVIL DEL CIRCUITO DE BOGOTÁ",
+        ):
+            d = interpretar_despacho(linea)
+            codigo = d.pop("codigo")
+            Juzgado.objects.update_or_create(codigo=codigo, defaults=d)
+        call_command("reasignar_juzgados_antiguos", "--aplicar", stdout=io.StringIO())
+        self.exp_propio.refresh_from_db()
+        self.assertEqual(self.exp_propio.juzgado.codigo, "110013103012")
+        self.assertFalse(Juzgado.objects.filter(pk=viejo.pk).exists())

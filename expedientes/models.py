@@ -5,11 +5,25 @@ from simple_history.models import HistoricalRecords
 
 class Juzgado(models.Model):
     nombre = models.CharField(max_length=200)
-    ciudad = models.CharField(max_length=100)
-    materia = models.CharField(max_length=100)
+    ciudad = models.CharField(max_length=100, blank=True, default="")
+    materia = models.CharField(max_length=100, blank=True, default="")
+    # Estructura del buscador de la Rama Judicial (Departamento > Municipio > Entidad > Especialidad > Despacho).
+    codigo = models.CharField(
+        "código del despacho", max_length=12, unique=True, null=True, blank=True,
+        help_text="Código de 12 dígitos de la Rama Judicial (p. ej. 110013109032).",
+    )
+    departamento = models.CharField(max_length=60, blank=True, default="")
+    municipio = models.CharField(max_length=100, blank=True, default="")
+    entidad = models.CharField(max_length=80, blank=True, default="")
+    especialidad = models.CharField(max_length=80, blank=True, default="")
 
     def __str__(self):
-        return f"{self.nombre} ({self.ciudad})"
+        return f"{self.nombre} ({self.ciudad})" if self.ciudad else self.nombre
+
+    @property
+    def etiqueta(self):
+        """Como se muestra en la Rama Judicial: «código - NOMBRE»."""
+        return f"{self.codigo} - {self.nombre}" if self.codigo else self.nombre
 
     class Meta:
         verbose_name = "Juzgado"

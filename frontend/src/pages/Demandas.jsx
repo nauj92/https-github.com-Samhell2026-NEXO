@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { FileText } from "lucide-react";
 import api from "../api";
 import Layout from "../components/Layout";
+import SelectorDespacho from "../components/SelectorDespacho";
+import SelectorClaseProceso from "../components/SelectorClaseProceso";
 import { mensajeError } from "../utils/errores";
 import { fecha, limpiar, pesos } from "../utils/formato";
 import Borrador from "../components/Borrador";
@@ -279,7 +281,7 @@ export default function Demandas() {
 
             <Seccion titulo="Datos generales">
               <Campo label="Clase de proceso">
-                <input value={form.clase_proceso} onChange={set("clase_proceso")} required placeholder="Ej.: Ejecutivo singular, Ordinario laboral" style={inputStyle} />
+                <SelectorClaseProceso value={form.clase_proceso} onChange={(v) => setForm({ ...form, clase_proceso: v })} required />
               </Campo>
               <div style={dosCol}>
                 <Campo label="Estado">
@@ -293,12 +295,9 @@ export default function Demandas() {
                     {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                   </select>
                 </Campo>
-                <Campo label="Juzgado">
-                  <select value={form.juzgado} onChange={set("juzgado")} style={inputStyle}>
-                    <option value="">Sin asignar</option>
-                    {juzgados.map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
-                  </select>
-                </Campo>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <SelectorDespacho juzgados={juzgados} value={form.juzgado} onChange={(v) => setForm({ ...form, juzgado: v })} />
+                </div>
                 <Campo label="Expediente (cuando ya exista)">
                   <select value={form.expediente} onChange={set("expediente")} style={inputStyle}>
                     <option value="">Sin expediente</option>
