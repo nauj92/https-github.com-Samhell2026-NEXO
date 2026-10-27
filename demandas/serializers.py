@@ -1,3 +1,5 @@
+import re
+
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -5,6 +7,7 @@ from core.permisos import es_directivo, exigir_expediente_visible
 from core.plazos import sumar_dias_habiles
 
 from .models import Citacion, ContestacionDemanda, Demanda
+from .requisitos import requisitos_art82
 
 DIAS_SUBSANACION = 5  # art. 90 CGP: cinco días para subsanar una demanda inadmitida
 
@@ -16,6 +19,21 @@ def limite_subsanacion(demanda):
     return None
 
 
+# Campos de los requisitos del artículo 82 CGP
+CAMPOS_ART82 = [
+    "juez_destinatario",
+    "demandante_tipo_persona", "demandante_tipo_documento", "demandante_documento", "demandante_domicilio",
+    "demandante_representante", "demandante_representante_documento",
+    "demandado_tipo_persona", "demandado_tipo_documento", "demandado_documento", "demandado_domicilio",
+    "demandado_representante", "demandado_ubicacion_desconocida", "otras_partes",
+    "sin_apoderado", "apoderado_nombre", "apoderado_documento", "apoderado_tarjeta_profesional",
+    "hechos", "pruebas", "documentos_en_poder_demandado",
+    "requiere_juramento_estimatorio", "juramento_estimatorio", "fundamentos_derecho", "cuantia_aplica",
+    "notif_demandante_direccion", "notif_demandante_email", "notif_demandado_direccion",
+    "notif_demandado_email", "notif_apoderado_direccion", "notif_apoderado_email", "otros_requisitos",
+]
+
+
 class DemandaSerializer(serializers.ModelSerializer):
     cliente_nombre = serializers.CharField(source="cliente.nombre", read_only=True, default=None)
     expediente_numero = serializers.CharField(source="expediente.numero", read_only=True, default=None)
@@ -24,6 +42,7 @@ class DemandaSerializer(serializers.ModelSerializer):
     estado_display = serializers.CharField(source="get_estado_display", read_only=True)
     fecha_limite_subsanacion = serializers.SerializerMethodField()
     dias_para_subsanar = serializers.SerializerMethodField()
+    requisitos = serializers.SerializerMethodField()
 
     class Meta:
         model = Demanda
@@ -32,9 +51,13 @@ class DemandaSerializer(serializers.ModelSerializer):
             "juzgado", "juzgado_nombre", "demandante", "demandado", "pretensiones", "cuantia",
             "estado", "estado_display", "fecha_radicacion", "fecha_inadmision", "fecha_admision",
             "fecha_limite_subsanacion", "dias_para_subsanar", "abogado_responsable", "abogado_nombre",
-            "borrador", "observaciones", "creado_en", "actualizado_en",
+            "borrador", "observaciones", "creado_en", "actualizado_en", "requisitos",
+            *CAMPOS_ART82,
         ]
         read_only_fields = ["id", "creado_en", "actualizado_en"]
+
+    def get_requisitos(self, obj):
+        return requisitos_art82(obj)
 
     def get_abogado_nombre(self, obj):
         if not obj.abogado_responsable:
@@ -78,6 +101,25 @@ class DemandaSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("La cuantía no puede ser negativa.")
         return value
 
+    def validate_hechos(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Los hechos deben enviarse como una lista.")
+        if len(value) > 200:
+            raise serializers.ValidationError("Máximo 200 hechos.")
+        limpios = []
+        for h in value:
+            if not isinstance(h, str):
+                raise serializers.ValidationError("Cada hecho debe ser un texto.")
+            h = " ".join(h.split())
+            if not h:
+                continue  # los renglones vacíos se descartan
+            if len(h) < 5:
+                raise serializers.ValidationError(f"El hecho “{h}” es demasiado corto: descríbalo con claridad.")
+            if len(h) > 2000:
+                raise serializers.ValidationError("Cada hecho puede tener máximo 2000 caracteres.")
+            limpios.append(h)
+        return limpios
+
     def validate_expediente(self, value):
         exigir_expediente_visible(self.context.get("request"), value)
         return value
@@ -88,11 +130,54 @@ class DemandaSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Solo un administrador o socio puede asignar la demanda a otro abogado.")
         return value
 
+    @staticmethod
+    def _documento(tipo, numero, etiqueta):
+        """Normaliza y valida un número de identificación según su tipo. Devuelve el número limpio."""
+        numero = (numero or "").strip()
+        if not numero:
+            return ""
+        if not tipo:
+            raise serializers.ValidationError(f"Indique el tipo de documento de {etiqueta}.")
+        if tipo == "PAS":
+            limpio = re.sub(r"[\s-]", "", numero).upper()
+            if not re.fullmatch(r"[A-Z0-9]{5,15}", limpio):
+                raise serializers.ValidationError(f"El pasaporte de {etiqueta} debe tener entre 5 y 15 letras o números.")
+            return limpio
+        limpio = re.sub(r"[\s.]", "", numero)
+        if tipo == "NIT":
+            if not re.fullmatch(r"\d{9,10}(-\d)?", limpio):
+                raise serializers.ValidationError(f"El NIT de {etiqueta} debe tener 9 o 10 dígitos (con dígito de verificación opcional: 900123456-7).")
+        elif not re.fullmatch(r"\d{5,12}", limpio):
+            raise serializers.ValidationError(f"El documento de {etiqueta} debe tener entre 5 y 12 dígitos.")
+        return limpio
+
     def validate(self, attrs):
         def valor(campo):
             if campo in attrs:
                 return attrs[campo]
             return getattr(self.instance, campo, None) if self.instance else None
+
+        errores_art82 = {}
+        for parte, etiqueta in (("demandante", "el demandante"), ("demandado", "el demandado")):
+            tipo = valor(f"{parte}_tipo_documento") or ""
+            persona = valor(f"{parte}_tipo_persona")
+            if persona == "juridica" and tipo and tipo != "NIT":
+                errores_art82[f"{parte}_tipo_documento"] = "Las personas jurídicas se identifican con NIT."
+                continue
+            try:
+                limpio = self._documento(tipo, valor(f"{parte}_documento"), etiqueta)
+            except serializers.ValidationError as exc:
+                errores_art82[f"{parte}_documento"] = exc.detail[0] if isinstance(exc.detail, list) else exc.detail
+                continue
+            if f"{parte}_documento" in attrs:
+                attrs[f"{parte}_documento"] = limpio
+        if valor("apoderado_documento"):
+            try:
+                attrs["apoderado_documento"] = self._documento("CC", valor("apoderado_documento"), "el apoderado")
+            except serializers.ValidationError as exc:
+                errores_art82["apoderado_documento"] = exc.detail[0] if isinstance(exc.detail, list) else exc.detail
+        if errores_art82:
+            raise serializers.ValidationError(errores_art82)
 
         estado = valor("estado") or Demanda.Estado.ELABORACION
         radicacion = valor("fecha_radicacion")

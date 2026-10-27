@@ -32,6 +32,71 @@ class Demanda(models.Model):
     )
     borrador = models.TextField(blank=True, help_text="Borrador del escrito de demanda (editable)")
     observaciones = models.TextField(blank=True)
+
+    # ---- Requisitos del artículo 82 del Código General del Proceso ----
+    class TipoPersona(models.TextChoices):
+        NATURAL = "natural", "Persona natural"
+        JURIDICA = "juridica", "Persona jurídica o patrimonio autónomo"
+
+    class TipoDocumento(models.TextChoices):
+        CC = "CC", "Cédula de ciudadanía"
+        CE = "CE", "Cédula de extranjería"
+        NIT = "NIT", "NIT"
+        PAS = "PAS", "Pasaporte"
+
+    # 1. Juez a quien se dirige
+    juez_destinatario = models.CharField(
+        max_length=200, blank=True, help_text="Ej.: Juez Civil del Circuito de Cali (Reparto)"
+    )
+    # 2. Partes
+    demandante_tipo_persona = models.CharField(max_length=10, choices=TipoPersona.choices, default=TipoPersona.NATURAL)
+    demandante_tipo_documento = models.CharField(max_length=3, choices=TipoDocumento.choices, blank=True)
+    demandante_documento = models.CharField(max_length=30, blank=True)
+    demandante_domicilio = models.CharField(max_length=200, blank=True)
+    demandante_representante = models.CharField(max_length=200, blank=True)
+    demandante_representante_documento = models.CharField(max_length=30, blank=True)
+    demandado_tipo_persona = models.CharField(max_length=10, choices=TipoPersona.choices, default=TipoPersona.NATURAL)
+    demandado_tipo_documento = models.CharField(max_length=3, choices=TipoDocumento.choices, blank=True)
+    demandado_documento = models.CharField(max_length=30, blank=True, help_text="Si se conoce")
+    demandado_domicilio = models.CharField(max_length=200, blank=True)
+    demandado_representante = models.CharField(max_length=200, blank=True)
+    demandado_ubicacion_desconocida = models.BooleanField(
+        default=False, help_text="Se desconoce el domicilio del demandado o el lugar de notificación (parágrafo 1)"
+    )
+    otras_partes = models.TextField(blank=True, help_text="Otros demandantes o demandados, con sus datos")
+    # 3. Apoderado del demandante
+    sin_apoderado = models.BooleanField(default=False, help_text="El demandante actúa sin apoderado judicial")
+    apoderado_nombre = models.CharField(max_length=200, blank=True)
+    apoderado_documento = models.CharField(max_length=30, blank=True)
+    apoderado_tarjeta_profesional = models.CharField(max_length=30, blank=True)
+    # 5. Hechos (numerados)
+    hechos = models.JSONField(default=list, blank=True, help_text="Lista de hechos; se numeran en el escrito")
+    # 6. Pruebas
+    pruebas = models.TextField(blank=True, help_text="Pruebas que se pretende hacer valer")
+    documentos_en_poder_demandado = models.TextField(
+        blank=True, help_text="Documentos que el demandado tiene en su poder, para que los aporte"
+    )
+    # 7. Juramento estimatorio
+    requiere_juramento_estimatorio = models.BooleanField(default=False)
+    juramento_estimatorio = models.TextField(blank=True)
+    # 8. Fundamentos de derecho
+    fundamentos_derecho = models.TextField(blank=True)
+    # 9. Cuantía (el valor está en `cuantia`)
+    cuantia_aplica = models.BooleanField(
+        default=True, help_text="La cuantía es necesaria para determinar competencia o trámite"
+    )
+    # 10. Notificaciones
+    notif_demandante_direccion = models.CharField(max_length=250, blank=True)
+    notif_demandante_email = models.EmailField(blank=True)
+    notif_demandado_direccion = models.CharField(max_length=250, blank=True)
+    notif_demandado_email = models.EmailField(blank=True)
+    notif_apoderado_direccion = models.CharField(max_length=250, blank=True)
+    notif_apoderado_email = models.EmailField(blank=True)
+    # 11. Los demás que exija la ley
+    otros_requisitos = models.TextField(
+        blank=True, help_text="Conciliación prejudicial, anexos, medidas cautelares y demás exigidos por la ley"
+    )
+
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 

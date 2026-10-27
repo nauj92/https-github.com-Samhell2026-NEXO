@@ -20,7 +20,7 @@ El sistema ERP centraliza el flujo de trabajo de un despacho jurídico:
 - **Menú desplegable con tres módulos**: Liquidación, Vigilancia judicial y Administración judicial.
 - **Liquidación**: laboral, créditos, alimentos y cuotas de administración, con detalle del cálculo, supuestos, impresión y registro de lo guardado.
 - **Vigilancia judicial**: seguimiento interno de procesos con enlaces anclados por proceso (consulta de procesos, estados, expediente digital), registro de actuaciones y alerta cuando pasan días sin movimiento.
-- **Administración judicial**: Gestión de demanda (A1 Elaboración de demanda con borrador editable; B1 Contestación de demanda con vencimiento en días hábiles y borrador), Citación de demanda (art. 291 y 292 CGP), Abogados (gestión de usuarios) y Audiencias y diligencias judiciales.
+- **Administración judicial**: Gestión de demanda (A1 Elaboración de demanda con formulario según el artículo 82 del CGP, verificación de requisitos y borrador editable; B1 Contestación de demanda con vencimiento en días hábiles y borrador), Citación de demanda (art. 291 y 292 CGP), Abogados (gestión de usuarios) y Audiencias y diligencias judiciales.
 - **Gestión de usuarios**: alta, edición, activación y desbloqueo desde la aplicación, y recuperación de contraseña por correo.
 - **Notificaciones**: pantalla propia con contador en el menú.
 
@@ -119,7 +119,7 @@ Motor: **PostgreSQL 17**.
 - **Vigilancia** — proceso vigilado (uno por Expediente), con los días de alerta sin movimiento.
 - **ActuacionVigilancia** — actuaciones que se registran de un proceso vigilado.
 - **EnlaceVigilancia** — enlaces anclados a un proceso vigilado (título, dirección http/https y nota).
-- **Demanda** — A1: demanda en elaboración o radicada, con estados, fechas de radicación, inadmisión y admisión, y borrador editable.
+- **Demanda** — A1: demanda con los campos de los requisitos del artículo 82 CGP (partes e identificación, apoderado, hechos, pruebas, juramento, fundamentos, notificaciones), estados, fechas de radicación, inadmisión y admisión, y borrador editable.
 - **ContestacionDemanda** — B1: contestación con fecha de notificación, término en días hábiles, excepciones, pruebas y borrador.
 - **Citacion** — citación (art. 291 CGP) o aviso (art. 292 CGP) con mensajería, guía y fechas de envío, entrega y notificación.
 
@@ -470,6 +470,7 @@ Aplicación: `http://localhost:5173/`
 - **Notificaciones automáticas**: audiencias y plazos en los próximos 3 días, plazos vencidos y facturas vencidas o por vencer (estas últimas solo para administrador y socio director).
 - **Liquidaciones**: las tasas (interés bancario corriente, usura), el salario mínimo y el auxilio de transporte se digitan según la certificación vigente. Los abonos de un crédito se imputan primero a intereses y luego a capital. La liquidación laboral no incluye sanción moratoria, aportes ni retención.
 - **Alimentos**: la cuota se incrementa cada 1 de enero con el porcentaje digitado; el interés es opcional (tasa digitada); los abonos se restan del total. Verifique los valores con la sentencia o el acuerdo.
+- **Demandas (A1) y artículo 82 CGP**: el formulario recoge los numerales del artículo 82 (juez, partes con identificación y domicilio, apoderado, pretensiones, hechos numerados, pruebas, juramento estimatorio, fundamentos de derecho, cuantía, notificaciones y demás requisitos). La demanda se puede guardar incompleta; el sistema muestra cuántos numerales cumple (x/10) y qué falta. Las personas jurídicas se identifican con NIT, el documento del demandado es opcional y se puede indicar que se desconoce su domicilio (parágrafo 1). Es una ayuda de revisión: el abogado verifica los requisitos especiales de cada clase de proceso.
 - **Demandas (A1)**: una demanda inadmitida tiene 5 días hábiles para subsanarse (art. 90 CGP); el sistema calcula el vencimiento y avisa. El borrador es un punto de partida desde plantilla, que el abogado debe revisar.
 - **Contestación (B1)**: 20 días hábiles desde la notificación por defecto (editable entre 1 y 90); se marca extemporánea si se presenta después del vencimiento.
 - **Citación**: el plazo para comparecer cuenta 5, 10 o 30 días hábiles desde la entrega según el demandado esté en el mismo municipio, en otro o en el exterior; el aviso se considera surtido el día hábil siguiente a su entrega (supuesto: verifique con el despacho).

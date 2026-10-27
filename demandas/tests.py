@@ -343,3 +343,145 @@ class CitacionApiTests(APITestCase):
         )
         generar_para_usuario(self.abogado)
         self.assertFalse(Notificacion.objects.filter(usuario=self.abogado, clave__startswith="citacion:").exists())
+
+
+COMPLETA = {
+    "clase_proceso": "Ejecutivo singular",
+    "demandante": "Inversiones Andina S.A.S.",
+    "demandado": "Constructora Horizonte Ltda.",
+    "pretensiones": "Se libre mandamiento de pago por el capital y los intereses de mora.",
+    "cuantia": "25000000",
+    "juez_destinatario": "Juez Civil del Circuito de Cali (Reparto)",
+    "demandante_tipo_persona": "juridica",
+    "demandante_tipo_documento": "NIT",
+    "demandante_documento": "900.123.456-7",
+    "demandante_domicilio": "Cali, Valle del Cauca",
+    "demandante_representante": "Luis Fernando Pérez",
+    "demandado_tipo_persona": "juridica",
+    "demandado_tipo_documento": "NIT",
+    "demandado_documento": "800765432-1",
+    "demandado_domicilio": "Bogotá D.C.",
+    "demandado_representante": "Marta Gómez",
+    "apoderado_nombre": "Camila Herrera Gonzales",
+    "apoderado_documento": "31.000.000",
+    "apoderado_tarjeta_profesional": "123456",
+    "hechos": ["El 1 de marzo de 2025 las partes suscribieron el contrato.", "El demandado incumplió el pago pactado."],
+    "pruebas": "Pagaré original y contrato de suministro.",
+    "fundamentos_derecho": "Artículos 422 y siguientes del Código General del Proceso.",
+    "notif_demandante_direccion": "Calle 10 # 5-20, Cali",
+    "notif_demandante_email": "notificaciones@andina.com",
+    "notif_apoderado_email": "camila@despacho.com",
+    "notif_demandado_direccion": "Carrera 7 # 71-21, Bogotá",
+}
+
+
+class Articulo82Tests(APITestCase):
+    def setUp(self):
+        self.abogado = crear_usuario("abog1", "abogado")
+        self.client.force_authenticate(self.abogado)
+
+    def crear(self, **extra):
+        d = dict(COMPLETA)
+        d.update(extra)
+        return self.client.post("/api/demandas/", d, format="json")
+
+    def test_demanda_completa_cumple_todos_los_numerales(self):
+        r = self.crear()
+        self.assertEqual(r.status_code, 201, r.data)
+        req = r.data["requisitos"]
+        self.assertEqual(req["cumplidos"], req["total"], [i for i in req["items"] if i["falta"]])
+        self.assertEqual(req["total"], 10)  # el numeral 11 es solo informativo
+        # el documento se guarda normalizado
+        self.assertEqual(r.data["demandante_documento"], "900123456-7")
+        self.assertEqual(r.data["apoderado_documento"], "31000000")
+
+    def test_demanda_minima_sigue_siendo_valida_y_muestra_lo_que_falta(self):
+        r = self.client.post(
+            "/api/demandas/",
+            {"clase_proceso": "Ordinario", "demandante": "Ana Pérez", "demandado": "Empresa XYZ",
+             "pretensiones": "Pago de prestaciones sociales adeudadas."},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.data)
+        numerales_faltantes = {i["numeral"] for i in r.data["requisitos"]["items"] if i["cumple"] is False}
+        self.assertTrue({1, 2, 3, 5, 6, 8, 9, 10} <= numerales_faltantes)
+        self.assertNotIn(4, numerales_faltantes)
+
+    def test_persona_juridica_se_identifica_con_nit(self):
+        r = self.crear(demandante_tipo_documento="CC", demandante_documento="12345678")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("demandante_tipo_documento", r.data)
+
+    def test_formato_de_documentos(self):
+        self.assertEqual(self.crear(demandante_documento="123").status_code, 400)  # NIT muy corto
+        self.assertEqual(
+            self.crear(demandante_tipo_persona="natural", demandante_tipo_documento="CC", demandante_documento="ABC123").status_code, 400
+        )
+        r = self.crear(demandante_documento="")
+        self.assertEqual(r.status_code, 201)
+        r = self.crear(demandado_tipo_documento="", demandado_documento="123456789")
+        self.assertEqual(r.status_code, 400)  # número sin tipo
+        self.assertIn("demandado_documento", r.data)
+        self.assertEqual(self.crear(apoderado_documento="12ab").status_code, 400)
+
+    def test_documento_del_demandado_es_opcional(self):
+        r = self.crear(demandado_tipo_documento="", demandado_documento="", demandado_tipo_persona="natural", demandado_representante="")
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(r.data["requisitos"]["cumplidos"], r.data["requisitos"]["total"])
+
+    def test_hechos_se_limpian_y_validan(self):
+        r = self.crear(hechos=["  Primer hecho con   espacios  ", "", "   "])
+        self.assertEqual(r.status_code, 201)
+        self.assertEqual(r.data["hechos"], ["Primer hecho con espacios"])
+        self.assertEqual(self.crear(hechos=["ok"]).status_code, 400)
+        self.assertEqual(self.crear(hechos="no es lista").status_code, 400)
+        self.assertEqual(self.crear(hechos=[123]).status_code, 400)
+
+    def test_correos_invalidos_se_rechazan(self):
+        self.assertEqual(self.crear(notif_demandante_email="no-es-correo").status_code, 400)
+
+    def test_domicilio_desconocido_del_demandado_parrafo_1(self):
+        r = self.crear(demandado_domicilio="", notif_demandado_direccion="", demandado_ubicacion_desconocida=False)
+        faltan = {i["numeral"] for i in r.data["requisitos"]["items"] if i["cumple"] is False}
+        self.assertTrue({2, 10} <= faltan)
+        r = self.crear(demandado_domicilio="", notif_demandado_direccion="", demandado_ubicacion_desconocida=True)
+        self.assertEqual(r.data["requisitos"]["cumplidos"], r.data["requisitos"]["total"])
+
+    def test_sin_apoderado_no_exige_datos_del_apoderado(self):
+        r = self.crear(sin_apoderado=True, apoderado_nombre="", apoderado_documento="", apoderado_tarjeta_profesional="", notif_apoderado_email="")
+        self.assertEqual(r.data["requisitos"]["cumplidos"], r.data["requisitos"]["total"])
+
+    def test_juramento_estimatorio_y_cuantia_solo_si_aplican(self):
+        r = self.crear(requiere_juramento_estimatorio=True, juramento_estimatorio="")
+        self.assertIn(7, {i["numeral"] for i in r.data["requisitos"]["items"] if i["cumple"] is False})
+        r = self.crear(requiere_juramento_estimatorio=True, juramento_estimatorio="Estimo bajo juramento la suma de $5.000.000 por perjuicios.")
+        self.assertTrue(next(i for i in r.data["requisitos"]["items"] if i["numeral"] == 7)["cumple"])
+        r = self.crear(cuantia="0", cuantia_aplica=True)
+        self.assertIn(9, {i["numeral"] for i in r.data["requisitos"]["items"] if i["cumple"] is False})
+        r = self.crear(cuantia="0", cuantia_aplica=False)
+        self.assertTrue(next(i for i in r.data["requisitos"]["items"] if i["numeral"] == 9)["cumple"])
+
+    def test_borrador_sigue_los_numerales_del_articulo_82(self):
+        pk = self.crear().data["id"]
+        texto = self.client.get(f"/api/demandas/{pk}/generar-borrador/").data["borrador"]
+        self.assertIn("JUEZ CIVIL DEL CIRCUITO DE CALI (REPARTO)", texto)
+        self.assertIn("NIT 900123456-7", texto)
+        self.assertIn("1. El 1 de marzo de 2025 las partes suscribieron el contrato.", texto)
+        self.assertIn("2. El demandado incumplió el pago pactado.", texto)
+        self.assertIn("T.P. 123456", texto)
+        self.assertIn("(numeral 10)", texto)
+        self.assertIn("parágrafo 2", texto)
+
+    def test_borrador_marca_lo_que_falta_y_la_ubicacion_desconocida(self):
+        pk = self.crear(hechos=[], pruebas="", demandado_ubicacion_desconocida=True, demandado_domicilio="").data["id"]
+        texto = self.client.get(f"/api/demandas/{pk}/generar-borrador/").data["borrador"]
+        self.assertIn("[Hecho primero.]", texto)
+        self.assertIn("de domicilio desconocido", texto)
+        self.assertIn("se desconoce el lugar donde recibirá notificaciones", texto)
+
+    def test_edicion_parcial_conserva_los_demas_campos(self):
+        pk = self.crear().data["id"]
+        r = self.client.patch(f"/api/demandas/{pk}/", {"fundamentos_derecho": "Artículo 82 del CGP."}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["demandante_documento"], "900123456-7")
+        self.assertEqual(len(r.data["hechos"]), 2)
