@@ -156,7 +156,7 @@ def candidatos_equivalentes(viejo, nuevos):
                 continue
             if ("ESPECIALIZADO" in p) != especializado:
                 continue
-            if any(x in p and x not in plano for x in _EXCLUIDOS):
+            if any((x in p) != (x in plano) for x in _EXCLUIDOS):
                 continue
             if not _ciudad_coincide(viejo, n):
                 continue

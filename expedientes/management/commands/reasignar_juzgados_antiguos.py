@@ -30,6 +30,11 @@ class Command(BaseCommand):
                 motivo = "no se encontró equivalente" if not cand else f"hay {len(cand)} posibles: " + "; ".join(c.etiqueta for c in cand[:3])
                 sin_equivalente.append(viejo.nombre)
                 self.stdout.write(self.style.WARNING(f"[sin cambios] {viejo.nombre} -> {motivo}"))
+                # Un juzgado antiguo que nadie usa se puede borrar sin riesgo.
+                if aplicar and not self._en_uso(viejo):
+                    viejo.delete()
+                    sin_equivalente.remove(viejo.nombre)
+                    self.stdout.write(f"   Borrado (no tenía registros asociados): {viejo.nombre}")
                 continue
             nuevo = cand[0]
             self.stdout.write(f"{viejo.nombre}  ->  {nuevo.etiqueta}")
@@ -49,3 +54,10 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f"Quedaron {len(sin_equivalente)} sin equivalente automático."))
         else:
             self.stdout.write(self.style.SUCCESS("Listo: todos los juzgados antiguos fueron reasignados y borrados."))
+
+    @staticmethod
+    def _en_uso(juzgado):
+        for rel in Juzgado._meta.related_objects:
+            if rel.related_model.objects.filter(**{rel.field.name: juzgado}).exists():
+                return True
+        return False
