@@ -8,8 +8,18 @@ const ROLES = [
   ["administrador", "Administrador"],
   ["socio_director", "Socio Director"],
   ["abogado", "Abogado"],
-  ["secretario_juridico", "Secretario Jurídico"],
+  ["secretario_juridico", "Secretario(a) Jurídico"],
+  ["escribiente", "Escribiente"],
+  ["cliente", "Cliente"],
 ];
+
+// Contraseña temporal aleatoria (12 caracteres, sin símbolos ambiguos)
+const generarClave = () => {
+  const letras = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  const a = new Uint32Array(12);
+  window.crypto.getRandomValues(a);
+  return Array.from(a, (n) => letras[n % letras.length]).join("") + "#7";
+};
 
 const vacio = { username: "", first_name: "", last_name: "", email: "", telefono: "", cedula: "", tarjeta_profesional: "", rol: "abogado", password: "" };
 
@@ -29,6 +39,7 @@ export default function Abogados() {
   const [guardando, setGuardando] = useState(false);
 
   const directivo = !!perfil?.es_directivo;
+  const administrador = !!perfil?.es_administrador; // solo el administrador crea y modifica usuarios
 
   const cargar = (esDirectivo = directivo) => {
     setCargando(true);
@@ -71,10 +82,13 @@ export default function Abogados() {
     if (!datos.password) delete datos.password;
     if (editandoId) delete datos.username;
     try {
+      let creado = null;
       if (editandoId) await api.patch(`/gestion-usuarios/${editandoId}/`, datos);
-      else await api.post("/gestion-usuarios/", datos);
+      else creado = (await api.post("/gestion-usuarios/", datos)).data;
       setForm(null);
-      setAviso(editandoId ? "Usuario actualizado." : "Usuario creado.");
+      if (editandoId) setAviso(datos.password ? "Usuario actualizado. Deberá cambiar la contraseña al ingresar." : "Usuario actualizado.");
+      else if (creado?.correo_enviado) setAviso(`Usuario creado. Se envió el correo de bienvenida a ${datos.email}.`);
+      else setError(`Usuario creado, pero NO se pudo enviar el correo a ${datos.email}. Entréguele el usuario y la contraseña temporal por otro medio.`);
       cargar();
     } catch (err) {
       setFormError(mensajeError(err));
@@ -111,9 +125,9 @@ export default function Abogados() {
       <div style={{ padding: "32px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
           <h1 style={{ display: "flex", alignItems: "center", gap: "10px", color: "#0a1a2b", margin: 0 }}>
-            <Users size={26} /> Abogados
+            <Users size={26} /> Abogados y usuarios
           </h1>
-          {directivo && <button style={btn("#0a1a2b")} onClick={abrirNuevo}>+ Nuevo abogado / usuario</button>}
+          {administrador && <button style={btn("#1d3f66")} onClick={abrirNuevo}>+ Nuevo usuario</button>}
         </div>
 
         {error && <p style={{ color: "#c73a3a", background: "#fde8e8", padding: "8px 12px", borderRadius: "8px", whiteSpace: "pre-line" }}>{error}</p>}
@@ -126,7 +140,7 @@ export default function Abogados() {
           <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: "12px", overflow: "hidden" }}>
             <thead>
               <tr style={{ background: "#f1f4f9", textAlign: "left", fontSize: "13px" }}>
-                {(directivo ? ["Usuario", "Nombre", "Correo", "Cédula", "T.P.", "Rol", "Estado", "Acciones"] : ["Usuario", "Nombre", "Rol"]).map((h) => (
+                {(directivo ? ["Usuario", "Nombre", "Correo", "Cédula", "T.P.", "Rol", "Estado", "Primer ingreso", ...(administrador ? ["Acciones"] : [])] : ["Usuario", "Nombre", "Rol"]).map((h) => (
                   <th key={h} style={{ padding: "12px" }}>{h}</th>
                 ))}
               </tr>
@@ -141,7 +155,8 @@ export default function Abogados() {
                   {directivo && <td style={{ padding: "12px" }}>{u.tarjeta_profesional || "—"}</td>}
                   <td style={{ padding: "12px" }}>{(ROLES.find((r) => r[0] === u.rol) || [])[1] || u.rol}</td>
                   {directivo && <td style={{ padding: "12px", color: u.is_active ? "#1d6b3a" : "#c73a3a" }}>{u.is_active ? "Activo" : "Inactivo"}</td>}
-                  {directivo && <td style={{ padding: "12px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                  {directivo && <td style={{ padding: "12px", color: u.debe_cambiar_password || u.autorizacion_datos_pendiente ? "#a8681a" : "#1d6b3a" }}>{u.debe_cambiar_password || u.autorizacion_datos_pendiente ? "Pendiente" : "Completo"}</td>}
+                  {administrador && <td style={{ padding: "12px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
                     <button style={btn("#3a6ea5")} onClick={() => abrirEditar(u)}>Editar</button>
                     <button style={btn(u.is_active ? "#c73a3a" : "#2e8b57")} onClick={() => alternarActivo(u)}>
                       {u.is_active ? "Desactivar" : "Activar"}
@@ -155,10 +170,11 @@ export default function Abogados() {
           </div>
         )}
 
-        {directivo && form && (
+        {administrador && form && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
             <form onSubmit={guardar} style={{ background: "white", padding: "28px", borderRadius: "14px", width: "420px", maxHeight: "90vh", overflowY: "auto" }}>
-              <h3 style={{ marginTop: 0 }}>{editandoId ? "Editar abogado / usuario" : "Nuevo abogado / usuario"}</h3>
+              <h3 style={{ marginTop: 0 }}>{editandoId ? "Editar usuario" : "Nuevo usuario"}</h3>
+              {!editandoId && <p style={{ fontSize: "12px", color: "#4a5a70", marginTop: 0 }}>Se enviará un correo con el usuario y una contraseña temporal. Al ingresar, la persona deberá cambiarla y autorizar el tratamiento de sus datos.</p>}
               {formError && <p style={{ color: "#c73a3a", background: "#fde8e8", padding: "8px 12px", borderRadius: "8px", fontSize: "13px", whiteSpace: "pre-line" }}>{formError}</p>}
               <div style={{ display: "grid", gap: "12px" }}>
                 <div><label style={label}>Usuario</label><input style={input} value={form.username} onChange={set("username")} disabled={!!editandoId} /></div>
@@ -175,8 +191,11 @@ export default function Abogados() {
                   </select>
                 </div>
                 <div>
-                  <label style={label}>{editandoId ? "Nueva contraseña (opcional)" : "Contraseña"}</label>
-                  <input style={input} type="password" value={form.password} onChange={set("password")} />
+                  <label style={label}>{editandoId ? "Nueva contraseña temporal (opcional)" : "Contraseña temporal"}</label>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    <input style={input} type="text" autoComplete="off" value={form.password} onChange={set("password")} />
+                    <button type="button" style={btn("#3b6ea5")} onClick={() => setForm({ ...form, password: generarClave() })}>Generar</button>
+                  </div>
                 </div>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "20px" }}>

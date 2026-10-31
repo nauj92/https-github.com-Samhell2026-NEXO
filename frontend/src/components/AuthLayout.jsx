@@ -7,7 +7,7 @@ const imagenesFondo = [
   "https://images.unsplash.com/photo-1436450412740-6b988f486c6b?q=80&w=1920",
 ];
 
-export default function AuthLayout({ titulo, children }) {
+export default function AuthLayout({ titulo, children, ancho = 380 }) {
   const [imagenFondo] = useState(imagenesFondo[Math.floor(Math.random() * imagenesFondo.length)]);
   return (
     <div
@@ -39,7 +39,7 @@ export default function AuthLayout({ titulo, children }) {
           padding: "40px",
           borderRadius: "16px",
           width: "100%",
-          maxWidth: "380px",
+          maxWidth: `${ancho}px`,
           boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
         }}
       >

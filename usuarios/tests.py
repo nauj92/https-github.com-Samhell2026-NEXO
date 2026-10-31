@@ -278,3 +278,156 @@ class DatosProfesionalesTests(APITestCase):
     def test_un_abogado_no_puede_crear_usuarios(self):
         self.client.force_authenticate(self.abogado)
         self.assertEqual(self.client.post("/api/gestion-usuarios/", {}, format="json").status_code, 403)
+
+
+class PrimerIngresoTests(APITestCase):
+    """El administrador crea las cuentas; la persona cambia la clave y autoriza el uso de sus datos."""
+
+    TEMPORAL = "Clave-Inicial-Segura-91"
+
+    def setUp(self):
+        self.admin = crear_usuario("admin1", "administrador")
+        self.socio = crear_usuario("socio1", "socio_director")
+        self.abogado = crear_usuario("abog1", "abogado")
+
+    def datos(self, **extra):
+        d = {
+            "username": "nuevo1", "first_name": "Nuevo", "last_name": "Usuario", "email": "nuevo1@example.com",
+            "rol": "escribiente", "password": self.TEMPORAL,
+        }
+        d.update(extra)
+        return d
+
+    def crear_y_entrar(self, **extra):
+        """El administrador crea la cuenta y la persona inicia sesión con la clave temporal."""
+        self.client.force_authenticate(self.admin)
+        r = self.client.post("/api/gestion-usuarios/", self.datos(**extra), format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        self.client.force_authenticate(None)
+        token = self.client.post(
+            "/api/token/", {"username": extra.get("username", "nuevo1"), "password": self.TEMPORAL}, format="json"
+        ).data["access"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+        return r
+
+    def test_solo_el_administrador_crea_usuarios(self):
+        for usuario in (self.socio, self.abogado):
+            self.client.force_authenticate(usuario)
+            r = self.client.post("/api/gestion-usuarios/", self.datos(), format="json")
+            self.assertEqual(r.status_code, 403, usuario.username)
+        self.assertFalse(Usuario.objects.filter(username="nuevo1").exists())
+
+    def test_el_socio_consulta_pero_no_modifica(self):
+        self.client.force_authenticate(self.socio)
+        self.assertEqual(self.client.get("/api/gestion-usuarios/").status_code, 200)
+        r = self.client.patch(f"/api/gestion-usuarios/{self.abogado.pk}/", {"is_active": False}, format="json")
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(self.client.post(f"/api/gestion-usuarios/{self.abogado.pk}/desbloquear/").status_code, 403)
+
+    def test_se_crean_todos_los_roles_del_despacho(self):
+        self.client.force_authenticate(self.admin)
+        for i, rol in enumerate(["abogado", "secretario_juridico", "escribiente", "cliente"]):
+            r = self.client.post(
+                "/api/gestion-usuarios/", self.datos(username=f"usuario{i}", email=f"usuario{i}@example.com", rol=rol), format="json"
+            )
+            self.assertEqual(r.status_code, 201, r.data)
+            self.assertEqual(r.data["rol"], rol)
+
+    def test_crear_envia_correo_de_bienvenida(self):
+        mail.outbox.clear()
+        r = self.crear_y_entrar()
+        self.assertTrue(r.data["correo_enviado"])
+        self.assertEqual(len(mail.outbox), 1)
+        correo = mail.outbox[0]
+        self.assertEqual(correo.to, ["nuevo1@example.com"])
+        self.assertIn("nuevo1", correo.body)
+        self.assertIn(self.TEMPORAL, correo.body)
+        self.assertIn("Escribiente", correo.body)
+        self.assertIn("/login", correo.body)
+
+    def test_si_el_correo_falla_la_cuenta_se_crea_igual(self):
+        from unittest import mock
+
+        self.client.force_authenticate(self.admin)
+        with mock.patch("usuarios.correos.send_mail", side_effect=OSError("sin red")):
+            r = self.client.post("/api/gestion-usuarios/", self.datos(), format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertFalse(r.data["correo_enviado"])
+        self.assertTrue(Usuario.objects.filter(username="nuevo1").exists())
+
+    def test_la_cuenta_nueva_queda_pendiente_de_primer_ingreso(self):
+        r = self.crear_y_entrar()
+        self.assertTrue(r.data["debe_cambiar_password"])
+        self.assertTrue(r.data["autorizacion_datos_pendiente"])
+        perfil = self.client.get("/api/perfil/")
+        self.assertEqual(perfil.status_code, 200)
+        self.assertTrue(perfil.data["debe_cambiar_password"])
+        self.assertTrue(perfil.data["autorizacion_datos_pendiente"])
+
+    def test_pendiente_no_puede_usar_el_sistema(self):
+        self.crear_y_entrar(rol="abogado")
+        r = self.client.get("/api/expedientes/")
+        self.assertEqual(r.status_code, 403)
+        self.assertIn("cambiar su contraseña", r.data["detail"])
+        self.assertEqual(self.client.get("/api/dashboard/resumen/").status_code, 403)
+
+    def test_flujo_completo_cambia_clave_autoriza_y_ya_puede_entrar(self):
+        self.crear_y_entrar(rol="abogado")
+        nueva = "Mi-Nueva-Clave-Larga-55"
+        r = self.client.post(
+            "/api/perfil/cambiar-password/", {"password_actual": self.TEMPORAL, "password_nueva": nueva}, format="json"
+        )
+        self.assertEqual(r.status_code, 200, r.data)
+        # Falta la autorización de datos: sigue bloqueado
+        self.assertEqual(self.client.get("/api/expedientes/").status_code, 403)
+        r = self.client.post("/api/perfil/autorizar-datos/", {"acepto": True}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(self.client.get("/api/expedientes/").status_code, 200)
+        u = Usuario.objects.get(username="nuevo1")
+        self.assertFalse(u.debe_cambiar_password)
+        self.assertFalse(u.autorizacion_datos_pendiente)
+        self.assertIsNotNone(u.fecha_autorizacion_datos)
+
+    def test_la_autorizacion_exige_aceptar_expresamente(self):
+        self.crear_y_entrar()
+        for cuerpo in ({}, {"acepto": False}, {"acepto": "si"}):
+            r = self.client.post("/api/perfil/autorizar-datos/", cuerpo, format="json")
+            self.assertEqual(r.status_code, 400, cuerpo)
+        self.assertTrue(Usuario.objects.get(username="nuevo1").autorizacion_datos_pendiente)
+
+    def test_la_clave_nueva_debe_ser_distinta_de_la_temporal(self):
+        self.crear_y_entrar()
+        r = self.client.post(
+            "/api/perfil/cambiar-password/", {"password_actual": self.TEMPORAL, "password_nueva": self.TEMPORAL}, format="json"
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertTrue(Usuario.objects.get(username="nuevo1").debe_cambiar_password)
+
+    def test_pendiente_tampoco_usa_la_gestion_de_usuarios(self):
+        # Un administrador recién creado también debe completar su primer ingreso
+        self.crear_y_entrar(username="admin2", email="admin2@example.com", rol="administrador")
+        self.assertEqual(self.client.get("/api/gestion-usuarios/").status_code, 403)
+
+    def test_el_administrador_que_fija_una_clave_obliga_a_cambiarla(self):
+        self.client.force_authenticate(self.admin)
+        r = self.client.patch(f"/api/gestion-usuarios/{self.abogado.pk}/", {"password": "Otra-Clave-Segura-55"}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.abogado.refresh_from_db()
+        self.assertTrue(self.abogado.debe_cambiar_password)
+
+    def test_cuentas_existentes_no_quedan_bloqueadas(self):
+        self.client.force_authenticate(self.abogado)
+        self.assertEqual(self.client.get("/api/expedientes/").status_code, 200)
+
+    def test_el_cliente_solo_ve_su_perfil(self):
+        u = crear_usuario("cli1", "cliente")
+        self.client.force_authenticate(u)
+        self.assertEqual(self.client.get("/api/perfil/").status_code, 200)
+        for ruta in ("/api/expedientes/", "/api/clientes/", "/api/demandas/", "/api/dashboard/resumen/", "/api/usuarios/"):
+            self.assertEqual(self.client.get(ruta).status_code, 403, ruta)
+
+    def test_el_perfil_informa_si_es_administrador(self):
+        self.client.force_authenticate(self.admin)
+        self.assertTrue(self.client.get("/api/perfil/").data["es_administrador"])
+        self.client.force_authenticate(self.socio)
+        self.assertFalse(self.client.get("/api/perfil/").data["es_administrador"])

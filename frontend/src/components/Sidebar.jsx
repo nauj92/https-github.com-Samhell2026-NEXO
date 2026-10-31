@@ -31,7 +31,7 @@ const menu = [
       },
       { to: "/citaciones", label: "Citación de demanda", Icon: Send },
       { to: "/clientes", label: "Clientes", Icon: Contact },
-      { to: "/abogados", label: "Abogados", Icon: Users },
+      { to: "/abogados", label: "Abogados y usuarios", Icon: Users },
       { to: "/audiencias", label: "Audiencias y diligencias judiciales", Icon: CalendarDays },
     ],
   },
@@ -106,7 +106,17 @@ export default function Sidebar() {
   };
 
   useEffect(() => {
-    api.get("/perfil/").then((response) => setPerfil(response.data)).catch(() => {});
+    api
+      .get("/perfil/")
+      .then((response) => {
+        setPerfil(response.data);
+        const p = response.data;
+        // Mientras no cambie la contraseña temporal y autorice el uso de sus datos, solo ve esa pantalla
+        if (p.debe_cambiar_password || p.autorizacion_datos_pendiente) navigate("/primer-ingreso", { replace: true });
+        else if (p.rol === "cliente" && location.pathname !== "/configuracion") navigate("/configuracion", { replace: true });
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [sinLeer, setSinLeer] = useState(0);
@@ -201,7 +211,7 @@ export default function Sidebar() {
       )}
 
       <nav style={{ flex: 1 }}>
-        {menu.map((item) => (
+        {perfil?.rol !== "cliente" && menu.map((item) => (
           <ElementoMenu key={item.id || item.to} item={item} nivel={0} abiertos={abiertos} alternar={alternar} ruta={location.pathname} compacto={compacto} expandir={() => cambiarCompacto(false)} />
         ))}
       </nav>

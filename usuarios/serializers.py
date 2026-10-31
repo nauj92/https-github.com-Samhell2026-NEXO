@@ -24,21 +24,38 @@ def desbloquear_acceso(usuario):
 
 class PerfilSerializer(serializers.ModelSerializer):
     es_directivo = serializers.SerializerMethodField()
+    es_administrador = serializers.SerializerMethodField()
 
     class Meta:
         model = Usuario
-        fields = ["id", "username", "email", "first_name", "last_name", "telefono", "rol", "es_directivo"]
-        read_only_fields = ["id", "username", "rol", "es_directivo"]
+        fields = [
+            "id", "username", "email", "first_name", "last_name", "telefono", "rol", "es_directivo",
+            "es_administrador", "debe_cambiar_password", "autorizacion_datos_pendiente",
+        ]
+        read_only_fields = [
+            "id", "username", "rol", "es_directivo", "es_administrador", "debe_cambiar_password",
+            "autorizacion_datos_pendiente",
+        ]
 
     def get_es_directivo(self, obj):
         from core.permisos import es_directivo
 
         return es_directivo(obj)
 
+    def get_es_administrador(self, obj):
+        from core.permisos import es_administrador
+
+        return es_administrador(obj)
+
 
 class CambiarPasswordSerializer(serializers.Serializer):
     password_actual = serializers.CharField(write_only=True)
     password_nueva = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs["password_actual"] == attrs["password_nueva"]:
+            raise serializers.ValidationError({"password_nueva": "La contraseña nueva debe ser distinta de la actual."})
+        return attrs
 
     def validate_password_nueva(self, value):
         validate_password(value, user=self.context.get("user"))
@@ -68,8 +85,11 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
         fields = [
             "id", "username", "first_name", "last_name", "email", "telefono", "cedula", "tarjeta_profesional",
             "rol", "is_active", "password", "nombre_completo", "last_login",
+            "debe_cambiar_password", "autorizacion_datos_pendiente", "fecha_autorizacion_datos",
         ]
-        read_only_fields = ["id", "last_login"]
+        read_only_fields = [
+            "id", "last_login", "debe_cambiar_password", "autorizacion_datos_pendiente", "fecha_autorizacion_datos",
+        ]
         extra_kwargs = {
             "email": {"required": True, "allow_blank": False},
             "first_name": {"required": True, "allow_blank": False},
@@ -128,6 +148,9 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
         password = validated_data.pop("password")
         usuario = Usuario(**validated_data)
         usuario.set_password(password)
+        # Contraseña temporal: debe cambiarla y autorizar el tratamiento de datos al ingresar
+        usuario.debe_cambiar_password = True
+        usuario.autorizacion_datos_pendiente = True
         usuario.save()
         return usuario
 
@@ -137,6 +160,7 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
             setattr(instance, campo, valor)
         if password:
             instance.set_password(password)
+            instance.debe_cambiar_password = True  # una contraseña fijada por el administrador es temporal
         instance.save()
         if password:
             desbloquear_acceso(instance)

@@ -4,6 +4,7 @@ import Expedientes from "./pages/Expedientes";
 import Audiencias from "./pages/Audiencias";
 import Configuracion from "./pages/Configuracion";
 import Abogados from "./pages/Abogados";
+import PrimerIngreso from "./pages/PrimerIngreso";
 import Dashboard from "./pages/Dashboard";
 import Clientes from "./pages/Clientes";
 import Demandas from "./pages/Demandas";
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/recuperar" element={<RecuperarPassword />} />
         <Route path="/restablecer/:uid/:token" element={<RestablecerPassword />} />
 
+        <Route path="/primer-ingreso" element={<PrimerIngreso />} />
         <Route path="/dashboard" element={<Dashboard />} />
 
         {/* Liquidación */}

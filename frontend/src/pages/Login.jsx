@@ -41,7 +41,16 @@ export default function Login() {
       } catch {
         /* sin almacenamiento */
       }
-      navigate("/dashboard");
+      // Primer ingreso (clave temporal / autorización de datos) o cuenta de cliente: ruta especial
+      let destino = "/dashboard";
+      try {
+        const { data: perfil } = await api.get("/perfil/");
+        if (perfil.debe_cambiar_password || perfil.autorizacion_datos_pendiente) destino = "/primer-ingreso";
+        else if (perfil.rol === "cliente") destino = "/configuracion";
+      } catch {
+        /* si el perfil no carga, la pantalla de destino lo vuelve a intentar */
+      }
+      navigate(destino);
     } catch (err) {
       const st = err.response?.status;
       if (st === 401 || st === 400) setError("Usuario o contraseña incorrectos.");

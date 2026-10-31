@@ -6,7 +6,7 @@ from .models import Usuario
 @admin.register(Usuario)
 class UsuarioAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
-        ("Información adicional", {"fields": ("rol", "telefono")}),
+        ("Información adicional", {"fields": ("rol", "telefono", "cedula", "tarjeta_profesional", "debe_cambiar_password", "autorizacion_datos_pendiente", "fecha_autorizacion_datos")}),
     )
     list_display = ("username", "email", "rol", "is_staff")
 

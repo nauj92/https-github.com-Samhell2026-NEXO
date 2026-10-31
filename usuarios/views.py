@@ -6,6 +6,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.mail import send_mail
+from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import status, viewsets
@@ -15,8 +16,9 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
-from core.permisos import EsDirectivo
+from core.permisos import EsAdministrador, EsDirectivo
 
+from .correos import enviar_bienvenida
 from .serializers import (
     CambiarPasswordSerializer,
     ConfirmarRecuperacionSerializer,
@@ -32,6 +34,8 @@ logger = logging.getLogger(__name__)
 
 
 class PerfilView(APIView):
+    permitido_en_primer_ingreso = True
+
     def get(self, request):
         serializer = PerfilSerializer(request.user)
         return Response(serializer.data)
@@ -44,6 +48,8 @@ class PerfilView(APIView):
 
 
 class CambiarPasswordView(APIView):
+    permitido_en_primer_ingreso = True
+
     def post(self, request):
         serializer = CambiarPasswordSerializer(data=request.data, context={"user": request.user})
         serializer.is_valid(raise_exception=True)
@@ -56,8 +62,26 @@ class CambiarPasswordView(APIView):
             return Response({"detail": "La contraseña actual no es correcta."}, status=status.HTTP_400_BAD_REQUEST)
 
         usuario.set_password(password_nueva)
+        usuario.debe_cambiar_password = False
         usuario.save()
         return Response({"detail": "Contraseña actualizada correctamente."})
+
+
+class AutorizarDatosView(APIView):
+    """POST {acepto: true}. Registra la autorización para el tratamiento de datos personales."""
+
+    permitido_en_primer_ingreso = True
+
+    def post(self, request):
+        if request.data.get("acepto") is not True:
+            return Response(
+                {"detail": "Debe aceptar la autorización para continuar."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        usuario = request.user
+        usuario.autorizacion_datos_pendiente = False
+        usuario.fecha_autorizacion_datos = timezone.now()
+        usuario.save(update_fields=["autorizacion_datos_pendiente", "fecha_autorizacion_datos"])
+        return Response({"detail": "Autorización registrada."})
 
 
 class UsuarioListView(APIView):
@@ -72,12 +96,26 @@ class UsuarioListView(APIView):
 
 
 class UsuarioAdminViewSet(viewsets.ModelViewSet):
-    """Gestión de usuarios (solo administradores y socios). No se borran: se desactivan."""
+    """Gestión de usuarios. Administradores y socios consultan; solo el administrador crea y modifica.
+
+    No se borran: se desactivan. Al crear una cuenta se envía un correo de bienvenida.
+    """
 
     serializer_class = UsuarioAdminSerializer
-    permission_classes = [EsDirectivo]
     queryset = Usuario.objects.all().order_by("first_name", "username")
     http_method_names = ["get", "post", "patch", "head", "options"]
+
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            return [EsDirectivo()]
+        return [EsAdministrador()]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        usuario = serializer.save()
+        enviado = enviar_bienvenida(usuario, request.data.get("password", ""))
+        return Response({**serializer.data, "correo_enviado": enviado}, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
     def desbloquear(self, request, pk=None):

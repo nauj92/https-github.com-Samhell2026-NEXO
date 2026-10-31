@@ -180,7 +180,7 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
+        "core.permisos.AccesoCompleto",
     ],
     "DEFAULT_THROTTLE_RATES": {
         "recuperacion": "30/hour",
@@ -190,4 +190,4 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-]
+]
