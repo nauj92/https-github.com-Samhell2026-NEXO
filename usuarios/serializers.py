@@ -50,7 +50,7 @@ class UsuarioSimpleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Usuario
-        fields = ["id", "username", "nombre_completo", "rol"]
+        fields = ["id", "username", "nombre_completo", "rol", "email", "cedula", "tarjeta_profesional"]
 
     def get_nombre_completo(self, obj):
         nombre = obj.get_full_name()
@@ -66,7 +66,7 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
         fields = [
-            "id", "username", "first_name", "last_name", "email", "telefono",
+            "id", "username", "first_name", "last_name", "email", "telefono", "cedula", "tarjeta_profesional",
             "rol", "is_active", "password", "nombre_completo", "last_login",
         ]
         read_only_fields = ["id", "last_login"]
@@ -84,6 +84,18 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
         if len(value) < 3:
             raise serializers.ValidationError("El usuario debe tener al menos 3 caracteres.")
         return value
+
+    def validate_cedula(self, value):
+        limpio = "".join(value.split()).replace(".", "")
+        if limpio and not (limpio.isdigit() and 5 <= len(limpio) <= 12):
+            raise serializers.ValidationError("La cédula debe tener entre 5 y 12 dígitos, sin letras.")
+        return limpio
+
+    def validate_tarjeta_profesional(self, value):
+        limpio = "".join(value.split()).replace(".", "")
+        if limpio and not (limpio.isalnum() and 3 <= len(limpio) <= 15):
+            raise serializers.ValidationError("La tarjeta profesional debe tener entre 3 y 15 letras o números.")
+        return limpio
 
     def validate(self, attrs):
         inst = self.instance

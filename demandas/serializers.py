@@ -3,11 +3,11 @@ import re
 from django.utils import timezone
 from rest_framework import serializers
 
-from core.permisos import es_directivo, exigir_expediente_visible
+from core.permisos import es_directivo, exigir_expediente_visible, expedientes_visibles
 from core.plazos import sumar_dias_habiles
 
 from .models import Citacion, ContestacionDemanda, Demanda
-from .requisitos import requisitos_art82
+from .requisitos import RESPUESTAS_HECHO, requisitos_art82, requisitos_art96
 
 DIAS_SUBSANACION = 5  # art. 90 CGP: cinco días para subsanar una demanda inadmitida
 
@@ -31,6 +31,21 @@ CAMPOS_ART82 = [
     "requiere_juramento_estimatorio", "juramento_estimatorio", "fundamentos_derecho", "cuantia_aplica",
     "notif_demandante_direccion", "notif_demandante_email", "notif_demandado_direccion",
     "notif_demandado_email", "notif_apoderado_direccion", "notif_apoderado_email", "otros_requisitos",
+]
+
+
+# Campos de los requisitos del artículo 96 CGP (contestación de la demanda)
+CAMPOS_ART96 = [
+    "demanda",
+    "demandado_tipo_persona", "demandado_tipo_documento", "demandado_documento", "demandado_domicilio",
+    "demandado_representante", "demandado_representante_documento",
+    "sin_apoderado", "apoderado_nombre", "apoderado_documento", "apoderado_tarjeta_profesional", "apoderado_domicilio",
+    "pronunciamiento_pretensiones", "pronunciamientos_hechos",
+    "excepciones_merito", "sin_excepciones", "objeta_juramento_estimatorio", "objecion_juramento",
+    "alega_derecho_retencion", "derecho_retencion",
+    "pruebas_en_expediente",
+    "notif_demandado_direccion", "notif_demandado_email", "notif_apoderado_direccion", "notif_apoderado_email",
+    "anexo_poder", "anexo_existencia_representacion", "documentos_solicitados", "anexos_otros",
 ]
 
 
@@ -234,6 +249,8 @@ class ContestacionSerializer(serializers.ModelSerializer):
     fecha_limite = serializers.SerializerMethodField()
     dias_restantes = serializers.SerializerMethodField()
     extemporanea = serializers.SerializerMethodField()
+    demanda_texto = serializers.SerializerMethodField()
+    requisitos = serializers.SerializerMethodField()
 
     class Meta:
         model = ContestacionDemanda
@@ -242,7 +259,8 @@ class ContestacionSerializer(serializers.ModelSerializer):
             "expediente_numero", "juzgado", "juzgado_nombre", "fecha_notificacion", "dias_termino",
             "fecha_limite", "dias_restantes", "estado", "estado_display", "fecha_presentacion", "extemporanea",
             "excepciones", "pruebas", "borrador", "abogado_responsable", "abogado_nombre", "observaciones",
-            "creado_en", "actualizado_en",
+            "creado_en", "actualizado_en", "demanda_texto", "requisitos",
+            *CAMPOS_ART96,
         ]
         read_only_fields = ["id", "creado_en", "actualizado_en"]
 
@@ -254,6 +272,13 @@ class ContestacionSerializer(serializers.ModelSerializer):
 
     def get_abogado_nombre(self, obj):
         return _nombre(obj.abogado_responsable)
+
+    def get_requisitos(self, obj):
+        return requisitos_art96(obj)
+
+    def get_demanda_texto(self, obj):
+        d = obj.demanda
+        return f"{d.clase_proceso}: {d.demandante} vs {d.demandado}" if d else None
 
     def get_fecha_limite(self, obj):
         return self.limite(obj)
@@ -292,11 +317,81 @@ class ContestacionSerializer(serializers.ModelSerializer):
     def validate_abogado_responsable(self, value):
         return _validar_abogado(self.context.get("request"), value)
 
+    def validate_demanda(self, value):
+        request = self.context.get("request")
+        if value is not None and request is not None and not es_directivo(request.user):
+            propia = value.abogado_responsable_id == request.user.pk
+            if not propia and not (value.expediente_id and expedientes_visibles(request.user).filter(pk=value.expediente_id).exists()):
+                raise serializers.ValidationError("No tiene acceso a esa demanda.")
+        return value
+
+    def validate_pronunciamientos_hechos(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("El pronunciamiento sobre los hechos debe enviarse como una lista.")
+        if len(value) > 200:
+            raise serializers.ValidationError("Máximo 200 hechos.")
+        limpios = []
+        for i, h in enumerate(value, start=1):
+            if not isinstance(h, dict):
+                raise serializers.ValidationError("Cada hecho debe tener los campos hecho, respuesta y razones.")
+            texto = " ".join(str(h.get("hecho") or "").split())
+            respuesta = h.get("respuesta") or ""
+            razones = str(h.get("razones") or "").strip()
+            if not texto and not razones and not respuesta:
+                continue  # renglón vacío
+            if len(texto) < 5:
+                raise serializers.ValidationError(f"Hecho {i}: transcriba o resuma el hecho de la demanda (mínimo 5 caracteres).")
+            if len(texto) > 2000 or len(razones) > 4000:
+                raise serializers.ValidationError(f"Hecho {i}: el texto es demasiado largo.")
+            if respuesta and respuesta not in RESPUESTAS_HECHO:
+                raise serializers.ValidationError(f"Hecho {i}: la respuesta debe ser admite, niega o no_consta.")
+            limpios.append({"hecho": texto, "respuesta": respuesta, "razones": razones})
+        return limpios
+
+    def validate_excepciones_merito(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Las excepciones deben enviarse como una lista.")
+        if len(value) > 50:
+            raise serializers.ValidationError("Máximo 50 excepciones.")
+        limpias = []
+        for i, e in enumerate(value, start=1):
+            if not isinstance(e, dict):
+                raise serializers.ValidationError("Cada excepción debe tener nombre y fundamento.")
+            nombre = " ".join(str(e.get("nombre") or "").split())
+            fundamento = str(e.get("fundamento") or "").strip()
+            if not nombre and not fundamento:
+                continue
+            if len(nombre) < 3:
+                raise serializers.ValidationError(f"Excepción {i}: escriba su nombre (mínimo 3 caracteres).")
+            if len(nombre) > 200 or len(fundamento) > 6000:
+                raise serializers.ValidationError(f"Excepción {i}: el texto es demasiado largo.")
+            limpias.append({"nombre": nombre, "fundamento": fundamento})
+        return limpias
+
     def validate(self, attrs):
         def valor(campo):
             if campo in attrs:
                 return attrs[campo]
             return getattr(self.instance, campo, None) if self.instance else None
+
+        errores_doc = {}
+        tipo = valor("demandado_tipo_documento") or ""
+        if valor("demandado_tipo_persona") == "juridica" and tipo and tipo != "NIT":
+            errores_doc["demandado_tipo_documento"] = "Las personas jurídicas se identifican con NIT."
+        else:
+            try:
+                limpio = DemandaSerializer._documento(tipo, valor("demandado_documento"), "el demandado")
+                if "demandado_documento" in attrs:
+                    attrs["demandado_documento"] = limpio
+            except serializers.ValidationError as exc:
+                errores_doc["demandado_documento"] = exc.detail[0] if isinstance(exc.detail, list) else exc.detail
+        if valor("apoderado_documento"):
+            try:
+                attrs["apoderado_documento"] = DemandaSerializer._documento("CC", valor("apoderado_documento"), "el apoderado")
+            except serializers.ValidationError as exc:
+                errores_doc["apoderado_documento"] = exc.detail[0] if isinstance(exc.detail, list) else exc.detail
+        if errores_doc:
+            raise serializers.ValidationError(errores_doc)
 
         hoy = timezone.localdate()
         notificacion = valor("fecha_notificacion")

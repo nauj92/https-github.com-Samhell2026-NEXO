@@ -72,3 +72,19 @@ class ClienteApiTests(APITestCase):
         )
         self.assertEqual(r.status_code, 200, r.data)
         self.assertEqual(Cliente.objects.count(), 1)
+
+
+class ClientePermisosTests(APITestCase):
+    def test_solo_directivos_borran_clientes(self):
+        cliente = Cliente.objects.create(nombre="María Pérez", tipo_documento="CC", numero_documento="52123456")
+        self.client.force_authenticate(crear_usuario("abog1", "abogado"))
+        self.assertEqual(self.client.delete(f"/api/clientes/{cliente.pk}/").status_code, 403)
+        self.assertEqual(self.client.patch(f"/api/clientes/{cliente.pk}/", {"telefono": "3001234567"}, format="json").status_code, 200)
+        self.client.force_authenticate(crear_usuario("admin1", "administrador"))
+        self.assertEqual(self.client.delete(f"/api/clientes/{cliente.pk}/").status_code, 204)
+
+    def test_pasaporte_y_nit_se_guardan_normalizados(self):
+        self.client.force_authenticate(crear_usuario("abog1", "abogado"))
+        r = self.client.post("/api/clientes/", {"nombre": "Comercial Andina S.A.S.", "tipo_documento": "NIT", "numero_documento": "900.123.456-7"}, format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(r.data["numero_documento"], "900123456-7")

@@ -11,7 +11,7 @@ const ROLES = [
   ["secretario_juridico", "Secretario Jurídico"],
 ];
 
-const vacio = { username: "", first_name: "", last_name: "", email: "", telefono: "", rol: "abogado", password: "" };
+const vacio = { username: "", first_name: "", last_name: "", email: "", telefono: "", cedula: "", tarjeta_profesional: "", rol: "abogado", password: "" };
 
 const input = { width: "100%", padding: "8px 10px", border: "1px solid #d5dbe5", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" };
 const label = { fontSize: "12px", fontWeight: 600, color: "#4a5a70", display: "block", marginBottom: "4px" };
@@ -55,7 +55,7 @@ export default function Abogados() {
 
   const abrirNuevo = () => { setForm({ ...vacio }); setEditandoId(null); setFormError(""); };
   const abrirEditar = (u) => {
-    setForm({ username: u.username, first_name: u.first_name, last_name: u.last_name, email: u.email, telefono: u.telefono || "", rol: u.rol, password: "" });
+    setForm({ username: u.username, first_name: u.first_name, last_name: u.last_name, email: u.email, telefono: u.telefono || "", cedula: u.cedula || "", tarjeta_profesional: u.tarjeta_profesional || "", rol: u.rol, password: "" });
     setEditandoId(u.id);
     setFormError("");
   };
@@ -126,7 +126,7 @@ export default function Abogados() {
           <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: "12px", overflow: "hidden" }}>
             <thead>
               <tr style={{ background: "#f1f4f9", textAlign: "left", fontSize: "13px" }}>
-                {(directivo ? ["Usuario", "Nombre", "Correo", "Rol", "Estado", "Acciones"] : ["Usuario", "Nombre", "Rol"]).map((h) => (
+                {(directivo ? ["Usuario", "Nombre", "Correo", "Cédula", "T.P.", "Rol", "Estado", "Acciones"] : ["Usuario", "Nombre", "Rol"]).map((h) => (
                   <th key={h} style={{ padding: "12px" }}>{h}</th>
                 ))}
               </tr>
@@ -137,6 +137,8 @@ export default function Abogados() {
                   <td style={{ padding: "12px" }}>{u.username}</td>
                   <td style={{ padding: "12px" }}>{u.nombre_completo}</td>
                   {directivo && <td style={{ padding: "12px" }}>{u.email}</td>}
+                  {directivo && <td style={{ padding: "12px" }}>{u.cedula || "—"}</td>}
+                  {directivo && <td style={{ padding: "12px" }}>{u.tarjeta_profesional || "—"}</td>}
                   <td style={{ padding: "12px" }}>{(ROLES.find((r) => r[0] === u.rol) || [])[1] || u.rol}</td>
                   {directivo && <td style={{ padding: "12px", color: u.is_active ? "#1d6b3a" : "#c73a3a" }}>{u.is_active ? "Activo" : "Inactivo"}</td>}
                   {directivo && <td style={{ padding: "12px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
@@ -164,6 +166,8 @@ export default function Abogados() {
                 <div><label style={label}>Apellido</label><input style={input} value={form.last_name} onChange={set("last_name")} /></div>
                 <div><label style={label}>Correo</label><input style={input} type="email" value={form.email} onChange={set("email")} /></div>
                 <div><label style={label}>Teléfono</label><input style={input} value={form.telefono} onChange={set("telefono")} /></div>
+                <div><label style={label}>Cédula (C.C.)</label><input style={input} value={form.cedula} onChange={set("cedula")} placeholder="Sin puntos" /></div>
+                <div><label style={label}>Tarjeta profesional (T.P.)</label><input style={input} value={form.tarjeta_profesional} onChange={set("tarjeta_profesional")} placeholder="Para firmar demandas y contestaciones" /></div>
                 <div>
                   <label style={label}>Rol</label>
                   <select style={input} value={form.rol} onChange={set("rol")}>

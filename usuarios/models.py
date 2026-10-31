@@ -11,6 +11,8 @@ class Usuario(AbstractUser):
 
     rol = models.CharField(max_length=30, choices=Rol.choices, default=Rol.ABOGADO)
     telefono = models.CharField(max_length=20, blank=True)
+    cedula = models.CharField("cédula", max_length=12, blank=True)
+    tarjeta_profesional = models.CharField("tarjeta profesional", max_length=15, blank=True)
 
     def __str__(self):
         return f"{self.get_full_name() or self.username} ({self.get_rol_display()})"

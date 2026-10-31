@@ -4,6 +4,7 @@ import Expedientes from "./pages/Expedientes";
 import Audiencias from "./pages/Audiencias";
 import Configuracion from "./pages/Configuracion";
 import Abogados from "./pages/Abogados";
+import Clientes from "./pages/Clientes";
 import Demandas from "./pages/Demandas";
 import Contestaciones from "./pages/Contestaciones";
 import Citaciones from "./pages/Citaciones";
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/demandas" element={<Demandas />} />
         <Route path="/contestaciones" element={<Contestaciones />} />
         <Route path="/citaciones" element={<Citaciones />} />
+        <Route path="/clientes" element={<Clientes />} />
         <Route path="/abogados" element={<Abogados />} />
         <Route path="/audiencias" element={<Audiencias />} />
 

@@ -4,6 +4,8 @@ import api from "../api";
 import Layout from "../components/Layout";
 import SelectorDespacho from "../components/SelectorDespacho";
 import SelectorClaseProceso from "../components/SelectorClaseProceso";
+import NuevoCliente from "../components/NuevoCliente";
+import { aplicarClienteAParte, ordenarPorNombre } from "../utils/clientes";
 import { Seccion, Casilla, ChipRequisitos, dosCol, TIPOS_PERSONA, TIPOS_DOC } from "../components/formulario";
 import Borrador from "../components/Borrador";
 import { mensajeError } from "../utils/errores";
@@ -71,6 +73,7 @@ export default function Contestaciones() {
   const [formError, setFormError] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [detalle, setDetalle] = useState(null);
+  const [nuevoCliente, setNuevoCliente] = useState(false);
   const [demandas, setDemandas] = useState([]);
 
   const cargar = () => {
@@ -113,6 +116,32 @@ export default function Contestaciones() {
   };
 
   const setCheck = (k) => (e) => setForm({ ...form, [k]: e.target.checked });
+  // Al elegir un cliente se completan los datos de la parte que representa, sin pisar lo ya escrito.
+  const aplicarCliente = (c) => setForm((f) => aplicarClienteAParte(f, c, "demandado"));
+  const abrirAbogados = () => window.open("/abogados", "_blank", "noopener");
+  const elegirCliente = (id) => {
+    if (id === "__nuevo__") return setNuevoCliente(true);
+    const c = clientes.find((x) => String(x.id) === String(id));
+    if (!c) return setForm({ ...form, cliente: "" });
+    aplicarCliente(c);
+  };
+  const clienteCreado = (c) => {
+    setClientes((l) => ordenarPorNombre([...l, c]));
+    aplicarCliente(c);
+    setNuevoCliente(false);
+  };
+  // Apoderado: se elige entre los abogados registrados y se completan sus datos profesionales.
+  const elegirApoderado = (id) => {
+    const u = usuarios.find((x) => String(x.id) === String(id));
+    if (!u) return;
+    setForm((f) => ({
+      ...f,
+      apoderado_nombre: u.nombre_completo,
+      apoderado_documento: u.cedula || f.apoderado_documento,
+      apoderado_tarjeta_profesional: u.tarjeta_profesional || f.apoderado_tarjeta_profesional,
+      notif_apoderado_email: f.notif_apoderado_email || u.email || "",
+    }));
+  };
   const cambiarTipoPersona = (e) => setForm({
     ...form,
     demandado_tipo_persona: e.target.value,
@@ -314,9 +343,10 @@ export default function Contestaciones() {
                   <Campo label="Fecha de presentación"><input type="date" max={hoyISO()} value={form.fecha_presentacion} onChange={set("fecha_presentacion")} style={inputStyle} /></Campo>
                 )}
                 <Campo label="Cliente">
-                  <select value={form.cliente} onChange={set("cliente")} style={inputStyle}>
+                  <select value={form.cliente} onChange={(e) => elegirCliente(e.target.value)} style={inputStyle}>
                     <option value="">Sin cliente</option>
                     {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                    <option value="__nuevo__">+ Crear nuevo cliente…</option>
                   </select>
                 </Campo>
                 <Campo label="Expediente">
@@ -331,9 +361,10 @@ export default function Contestaciones() {
               </div>
               {perfil?.es_directivo && (
                 <Campo label="Abogado responsable en el sistema">
-                  <select value={form.abogado_responsable} onChange={set("abogado_responsable")} style={inputStyle}>
+                  <select value={form.abogado_responsable} onChange={(e) => (e.target.value === "__nuevo__" ? abrirAbogados() : set("abogado_responsable")(e))} style={inputStyle}>
                     <option value="">Yo (por defecto)</option>
                     {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre_completo}</option>)}
+                    <option value="__nuevo__">+ Crear nuevo abogado…</option>
                   </select>
                 </Campo>
               )}
@@ -364,12 +395,21 @@ export default function Contestaciones() {
               </div>
               <Casilla checked={form.sin_apoderado} onChange={setCheck("sin_apoderado")}>El demandado comparece por sí mismo, sin apoderado</Casilla>
               {!form.sin_apoderado && (
+                <>
+                <Campo label="Elegir de los abogados registrados" ayuda="Completa nombre, cédula, T.P. y correo.">
+                  <select value="" onChange={(e) => (e.target.value === "__nuevo__" ? abrirAbogados() : elegirApoderado(e.target.value))} style={inputStyle}>
+                    <option value="">Seleccione un abogado…</option>
+                    {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre_completo}{u.tarjeta_profesional ? ` · T.P. ${u.tarjeta_profesional}` : ""}</option>)}
+                    <option value="__nuevo__">+ Crear nuevo abogado…</option>
+                  </select>
+                </Campo>
                 <div style={dosCol}>
                   <Campo label="Nombre del apoderado"><input value={form.apoderado_nombre} onChange={set("apoderado_nombre")} style={inputStyle} /></Campo>
                   <Campo label="Cédula (C.C.)"><input value={form.apoderado_documento} onChange={set("apoderado_documento")} style={inputStyle} /></Campo>
                   <Campo label="Tarjeta profesional (T.P.)"><input value={form.apoderado_tarjeta_profesional} onChange={set("apoderado_tarjeta_profesional")} style={inputStyle} /></Campo>
                   <Campo label="Domicilio del apoderado"><input value={form.apoderado_domicilio} onChange={set("apoderado_domicilio")} style={inputStyle} /></Campo>
                 </div>
+                </>
               )}
             </Seccion>
 
@@ -491,6 +531,8 @@ export default function Contestaciones() {
             </div>
           </Modal>
         )}
+
+        {nuevoCliente && <NuevoCliente onClose={() => setNuevoCliente(false)} onGuardado={clienteCreado} />}
 
         {detalle && (
           <Modal onClose={() => setDetalle(null)} ancho={640}>

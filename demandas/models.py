@@ -141,6 +141,46 @@ class ContestacionDemanda(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="contestaciones"
     )
     observaciones = models.TextField(blank=True)
+
+    # ---- Requisitos del artículo 96 del Código General del Proceso ----
+    demanda = models.ForeignKey(
+        Demanda, on_delete=models.SET_NULL, null=True, blank=True, related_name="contestaciones"
+    )
+    # 1. Demandado y apoderado
+    demandado_tipo_persona = models.CharField(max_length=10, choices=Demanda.TipoPersona.choices, default="natural")
+    demandado_tipo_documento = models.CharField(max_length=3, choices=Demanda.TipoDocumento.choices, blank=True)
+    demandado_documento = models.CharField(max_length=30, blank=True)
+    demandado_domicilio = models.CharField(max_length=200, blank=True)
+    demandado_representante = models.CharField(max_length=200, blank=True)
+    demandado_representante_documento = models.CharField(max_length=30, blank=True)
+    sin_apoderado = models.BooleanField(default=False)
+    apoderado_nombre = models.CharField(max_length=200, blank=True)
+    apoderado_documento = models.CharField(max_length=30, blank=True)
+    apoderado_tarjeta_profesional = models.CharField(max_length=30, blank=True)
+    apoderado_domicilio = models.CharField(max_length=200, blank=True)
+    # 2. Pronunciamiento sobre pretensiones y hechos
+    pronunciamiento_pretensiones = models.TextField(blank=True)
+    pronunciamientos_hechos = models.JSONField(default=list, blank=True)
+    # 3. Excepciones de mérito, juramento estimatorio y derecho de retención
+    excepciones_merito = models.JSONField(default=list, blank=True)
+    sin_excepciones = models.BooleanField(default=False)
+    objeta_juramento_estimatorio = models.BooleanField(default=False)
+    objecion_juramento = models.TextField(blank=True)
+    alega_derecho_retencion = models.BooleanField(default=False)
+    derecho_retencion = models.TextField(blank=True)
+    # 4. Pruebas (el campo `pruebas` ya existía)
+    pruebas_en_expediente = models.BooleanField(default=False)
+    # 5. Notificaciones
+    notif_demandado_direccion = models.CharField(max_length=250, blank=True)
+    notif_demandado_email = models.EmailField(blank=True)
+    notif_apoderado_direccion = models.CharField(max_length=250, blank=True)
+    notif_apoderado_email = models.EmailField(blank=True)
+    # Anexos
+    anexo_poder = models.BooleanField(default=False)
+    anexo_existencia_representacion = models.BooleanField(default=False)
+    documentos_solicitados = models.TextField(blank=True)
+    anexos_otros = models.TextField(blank=True)
+
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Scale, LogOut, Gavel, Calculator, Eye, FileText, ChevronDown, ChevronRight, Briefcase, Bell,
-  FileSignature, Send, Users, CalendarDays,
+  FileSignature, Send, Users, CalendarDays, Contact,
 } from "lucide-react";
 import api from "../api";
 
@@ -29,6 +29,7 @@ const menu = [
         ],
       },
       { to: "/citaciones", label: "Citación de demanda", Icon: Send },
+      { to: "/clientes", label: "Clientes", Icon: Contact },
       { to: "/abogados", label: "Abogados", Icon: Users },
       { to: "/audiencias", label: "Audiencias y diligencias judiciales", Icon: CalendarDays },
     ],

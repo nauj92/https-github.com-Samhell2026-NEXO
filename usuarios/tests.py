@@ -245,3 +245,36 @@ class RecuperacionPasswordTests(APITestCase):
             "/api/password-reset/", {"email": "abog1@example.com"}, format="json", HTTP_AUTHORIZATION="Bearer token.vencido.xyz"
         )
         self.assertEqual(r.status_code, 200)
+
+
+class DatosProfesionalesTests(APITestCase):
+    def setUp(self):
+        self.admin = crear_usuario("admin1", "administrador")
+        self.abogado = crear_usuario("abog1", "abogado")
+
+    def test_directivo_crea_abogado_con_cedula_y_tarjeta_profesional(self):
+        self.client.force_authenticate(self.admin)
+        r = self.client.post("/api/gestion-usuarios/", {
+            "username": "camila", "first_name": "Camila", "last_name": "Herrera", "email": "camila@despacho.com",
+            "rol": "abogado", "password": "Clave-Segura-2026!", "cedula": "31.000.000", "tarjeta_profesional": "123456",
+        }, format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(r.data["cedula"], "31000000")
+        self.assertEqual(r.data["tarjeta_profesional"], "123456")
+
+    def test_cedula_y_tarjeta_invalidas_se_rechazan(self):
+        self.client.force_authenticate(self.admin)
+        base = {"username": "camila", "first_name": "Camila", "last_name": "Herrera", "email": "camila@despacho.com",
+                "rol": "abogado", "password": "Clave-Segura-2026!"}
+        self.assertEqual(self.client.post("/api/gestion-usuarios/", {**base, "cedula": "abc"}, format="json").status_code, 400)
+        self.assertEqual(self.client.post("/api/gestion-usuarios/", {**base, "tarjeta_profesional": "1"}, format="json").status_code, 400)
+
+    def test_el_listado_para_seleccionar_abogados_trae_sus_datos_profesionales(self):
+        Usuario.objects.filter(pk=self.abogado.pk).update(cedula="31000000", tarjeta_profesional="123456")
+        self.client.force_authenticate(self.abogado)
+        fila = next(u for u in self.client.get("/api/usuarios/").data if u["username"] == "abog1")
+        self.assertEqual((fila["cedula"], fila["tarjeta_profesional"], fila["email"]), ("31000000", "123456", "abog1@example.com"))
+
+    def test_un_abogado_no_puede_crear_usuarios(self):
+        self.client.force_authenticate(self.abogado)
+        self.assertEqual(self.client.post("/api/gestion-usuarios/", {}, format="json").status_code, 403)

@@ -156,11 +156,97 @@ Atentamente,
 """
 
 
+_RESPUESTA_TXT = {"admite": "SE ADMITE", "niega": "NO ES CIERTO", "no_consta": "NO ME CONSTA"}
+
+
 def borrador_contestacion(c):
+    """Borrador ordenado según el artículo 96 del Código General del Proceso."""
     juzgado = c.juzgado.nombre if c.juzgado else "[JUZGADO]"
     ciudad = c.juzgado.ciudad if c.juzgado and c.juzgado.ciudad else "[ciudad]"
     radicado = c.expediente.numero if c.expediente else "[radicado]"
-    abogado = (c.abogado_responsable.get_full_name() or c.abogado_responsable.username) if c.abogado_responsable else "[nombre del apoderado]"
+    abogado = c.apoderado_nombre or (
+        (c.abogado_responsable.get_full_name() or c.abogado_responsable.username) if c.abogado_responsable else ""
+    )
+
+    # 1. Demandado y apoderado
+    persona = _persona(
+        c.demandado, c.demandado_tipo_documento, c.demandado_documento, c.demandado_domicilio,
+        c.demandado_representante, c.demandado_representante_documento, "DEMANDADO",
+    )
+    if c.sin_apoderado:
+        apoderado_txt = "El demandado comparece por sí mismo, sin apoderado judicial."
+        presentacion = f"{c.demandado}, actuando en nombre propio,"
+        firma, firma_doc = c.demandado, _v(c.demandado_documento, "identificación")
+    else:
+        apoderado_txt = (
+            f"APODERADO: {_v(abogado, 'nombre del apoderado')}, identificado(a) con C.C. {_v(c.apoderado_documento, 'número')} "
+            f"y T.P. {_v(c.apoderado_tarjeta_profesional, 'T.P.')}, domiciliado(a) en {_v(c.apoderado_domicilio, 'domicilio')}."
+        )
+        presentacion = f"{_v(abogado, 'nombre del apoderado')}, abogado(a) en ejercicio, obrando como apoderado(a) de {c.demandado},"
+        firma = _v(abogado, "nombre del apoderado")
+        firma_doc = f"C.C. {_v(c.apoderado_documento, 'número')} · T.P. {_v(c.apoderado_tarjeta_profesional, 'número')}"
+
+    # 2. Pronunciamiento
+    hechos = [h for h in (c.pronunciamientos_hechos or []) if isinstance(h, dict) and str(h.get("hecho", "")).strip()]
+    if hechos:
+        bloques = []
+        for i, h in enumerate(hechos, start=1):
+            resp = _RESPUESTA_TXT.get(h.get("respuesta"), "[admite / niega / no le consta]")
+            linea = f"AL HECHO {i}: {resp}."
+            razones = str(h.get("razones") or "").strip()
+            if h.get("respuesta") in ("niega", "no_consta"):
+                linea += f" {razones}" if razones else " [Exprese de forma precisa y unívoca las razones; si no lo hace, el hecho se presumirá cierto.]"
+            bloques.append(f"{linea}\n   (Hecho de la demanda: {h['hecho']})")
+        hechos_txt = "\n".join(bloques)
+    else:
+        hechos_txt = "[Pronúnciese sobre cada hecho de la demanda indicando los que admite, los que niega y los que no le constan, con sus razones.]"
+    pretensiones = _v(c.pronunciamiento_pretensiones, "Pronunciamiento expreso y concreto sobre cada pretensión")
+
+    # 3. Excepciones, juramento estimatorio, derecho de retención
+    excepciones = [e for e in (c.excepciones_merito or []) if isinstance(e, dict) and str(e.get("nombre", "")).strip()]
+    if excepciones:
+        exc_txt = "\n".join(
+            f"{i}. {e['nombre'].upper()}\n   {_v(e.get('fundamento'), 'Fundamento fáctico')}" for i, e in enumerate(excepciones, start=1)
+        )
+    elif c.sin_excepciones:
+        exc_txt = "No se proponen excepciones de mérito."
+    else:
+        exc_txt = "[Excepciones de mérito, cada una con su fundamento fáctico.]"
+    if c.excepciones.strip():
+        exc_txt += "\n\nOtras excepciones o consideraciones:\n" + c.excepciones.strip()
+    juramento = (
+        _v(c.objecion_juramento, "Objeción al juramento estimatorio, razonada y especificando la inexactitud que se le atribuye")
+        if c.objeta_juramento_estimatorio else "No se formula objeción al juramento estimatorio."
+    )
+    retencion = (
+        _v(c.derecho_retencion, "Derecho de retención que se alega y su fundamento")
+        if c.alega_derecho_retencion else "No se alega derecho de retención."
+    )
+
+    # 4. Pruebas
+    pruebas = c.pruebas.strip() or ("Las pruebas que se pretende hacer valer ya obran en el expediente." if c.pruebas_en_expediente else "[Pruebas que se pretende hacer valer]")
+    if c.pruebas_en_expediente and c.pruebas.strip():
+        pruebas += "\nAdicionalmente, se solicita tener como prueba las que ya obran en el expediente."
+
+    # 5. Notificaciones
+    notif = [f"El demandado: {_v(c.notif_demandado_direccion, 'dirección física')}; correo electrónico: {_v(c.notif_demandado_email, 'correo electrónico')}."]
+    if not c.sin_apoderado:
+        notif.append(f"El apoderado: {_v(c.notif_apoderado_direccion, 'dirección física')}; correo electrónico: {_v(c.notif_apoderado_email, 'correo electrónico')}.")
+
+    # Anexos
+    anexos = []
+    if not c.sin_apoderado:
+        anexos.append("Poder conferido para actuar en nombre del demandado.")
+    if c.demandado_tipo_persona == "juridica":
+        anexos.append("Certificado de existencia y representación legal del demandado.")
+    docs = c.documentos_solicitados.strip()
+    anexos.append(f"Documentos en poder del demandado solicitados por el demandante: {docs}" if docs else
+                  "Documentos solicitados por el demandante: [se aportan / manifiesto que el demandado no los tiene].")
+    anexos.append("Las pruebas documentales que se pretende hacer valer.")
+    if c.anexos_otros.strip():
+        anexos.append(c.anexos_otros.strip())
+    anexos_txt = "\n".join(f"{i}. {a}" for i, a in enumerate(anexos, start=1))
+
     return f"""Señor(a)
 {juzgado.upper()}
 {ciudad}
@@ -172,31 +258,38 @@ DEMANDANTE: {c.demandante}
 DEMANDADO: {c.demandado}
 ASUNTO: CONTESTACIÓN DE LA DEMANDA
 
-{abogado}, abogado(a) titulado(a) y en ejercicio, obrando como apoderado(a) de {c.demandado}, según poder que se anexa, dentro del término legal (notificación: {_fecha(c.fecha_notificacion)}; traslado de {c.dias_termino} días hábiles), contesto la demanda en los siguientes términos:
+{presentacion} dentro del término legal (notificación: {_fecha(c.fecha_notificacion)}; traslado de {c.dias_termino} días hábiles), contesto la demanda en los siguientes términos:
 
-I. PRONUNCIAMIENTO SOBRE LOS HECHOS
-1. Al hecho primero: [es cierto / no es cierto / no me consta].
-2. Al hecho segundo: [...]
+I. IDENTIFICACIÓN DEL DEMANDADO Y DE SU APODERADO (art. 96, numeral 1)
+{persona}
+{apoderado_txt}
 
-II. PRONUNCIAMIENTO SOBRE LAS PRETENSIONES
-Me opongo a las pretensiones de la demanda por las razones que expongo a continuación. [Indicar cada pretensión y su posición.]
+II. PRONUNCIAMIENTO SOBRE LOS HECHOS Y LAS PRETENSIONES (numeral 2)
+A. Hechos
+{hechos_txt}
 
-III. EXCEPCIONES
-{c.excepciones or "[Excepciones de mérito y, si aplican, previas, cada una con su fundamento.]"}
+B. Pretensiones
+{pretensiones}
 
-IV. PRUEBAS
-{c.pruebas or "[Documentales, testimoniales, periciales y demás que se aportan o solicitan.]"}
+III. EXCEPCIONES DE MÉRITO (numeral 3)
+{exc_txt}
 
-V. ANEXOS
-[Poder, pruebas documentales, copias.]
+Juramento estimatorio: {juramento}
+Derecho de retención: {retencion}
 
-VI. NOTIFICACIONES
-[Direcciones físicas y electrónicas del demandado y del apoderado.]
+IV. PRUEBAS (numeral 4)
+{pruebas}
+
+V. NOTIFICACIONES (numeral 5)
+{chr(10).join(notif)}
+
+VI. ANEXOS
+{anexos_txt}
 
 Atentamente,
 
-{abogado}
-C.C. [número] · T.P. [número]
+{firma}
+{firma_doc}
 
-(Plantilla base generada el {timezone.localdate():%d/%m/%Y}: revise el cumplimiento del artículo 96 del Código General del Proceso y los requisitos de su clase de proceso.)
+(Plantilla generada el {timezone.localdate():%d/%m/%Y}: revise el cumplimiento del artículo 96 del Código General del Proceso y los requisitos de su clase de proceso. Recuerde que, si no se pronuncia de forma precisa y unívoca sobre los hechos que niega o que no le constan, se presumirán ciertos.)
 """

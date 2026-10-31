@@ -485,3 +485,162 @@ class Articulo82Tests(APITestCase):
         self.assertEqual(r.status_code, 200, r.data)
         self.assertEqual(r.data["demandante_documento"], "900123456-7")
         self.assertEqual(len(r.data["hechos"]), 2)
+
+
+COMPLETA96 = {
+    "clase_proceso": "Ejecutivo singular",
+    "demandante": "Comercializadora Andina S.A.S.",
+    "demandado": "Constructora Horizonte Ltda.",
+    "demandado_tipo_persona": "juridica",
+    "demandado_tipo_documento": "NIT",
+    "demandado_documento": "800765432-1",
+    "demandado_domicilio": "Bogotá D.C.",
+    "demandado_representante": "Marta Lucía Gómez Rojas",
+    "demandado_representante_documento": "C.C. 52000111",
+    "apoderado_nombre": "Camila Herrera Gonzales",
+    "apoderado_documento": "31000000",
+    "apoderado_tarjeta_profesional": "123456",
+    "apoderado_domicilio": "Bogotá D.C.",
+    "pronunciamiento_pretensiones": "Me opongo a todas las pretensiones por las razones que se exponen en las excepciones.",
+    "pronunciamientos_hechos": [
+        {"hecho": "El 15 de febrero de 2026 la demandada suscribió el pagaré No. 001.", "respuesta": "admite", "razones": ""},
+        {"hecho": "El pagaré se pactó con vencimiento el 31 de julio de 2026.", "respuesta": "niega",
+         "razones": "El vencimiento pactado fue el 31 de diciembre de 2026, según la carta de instrucciones."},
+        {"hecho": "A la fecha la demandada no ha pagado el capital.", "respuesta": "no_consta",
+         "razones": "El pago fue realizado por un tercero y el demandado no tiene el soporte a la mano."},
+    ],
+    "excepciones_merito": [
+        {"nombre": "Inexigibilidad de la obligación", "fundamento": "La obligación no estaba vencida a la presentación de la demanda."},
+    ],
+    "pruebas": "Carta de instrucciones y comprobantes de pago.",
+    "notif_demandado_direccion": "Carrera 7 # 71-21, Bogotá",
+    "notif_demandado_email": "notificaciones@horizonte.com",
+    "notif_apoderado_email": "camila.herrera@despacho.com",
+    "anexo_poder": True,
+    "anexo_existencia_representacion": True,
+}
+
+
+class Articulo96Tests(APITestCase):
+    def setUp(self):
+        self.admin = crear_usuario("admin1", "administrador")
+        self.abogado = crear_usuario("abog1", "abogado")
+        self.otro = crear_usuario("abog2", "abogado")
+        self.client.force_authenticate(self.abogado)
+
+    def crear(self, **extra):
+        d = dict(COMPLETA96)
+        d.update(extra)
+        return self.client.post("/api/contestaciones/", d, format="json")
+
+    def faltan(self, r):
+        return {i["numeral"] for i in r.data["requisitos"]["items"] if i["cumple"] is False}
+
+    def test_contestacion_completa_cumple_todos_los_numerales(self):
+        r = self.crear()
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(r.data["requisitos"]["cumplidos"], r.data["requisitos"]["total"], r.data["requisitos"])
+        self.assertEqual(r.data["requisitos"]["total"], 6)
+
+    def test_contestacion_minima_se_guarda_y_lista_lo_que_falta(self):
+        r = self.client.post("/api/contestaciones/", {"clase_proceso": "Verbal", "demandante": "Ana Pérez", "demandado": "Empresa XYZ"}, format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(self.faltan(r), {1, 2, 3, 4, 5, 6})
+
+    def test_hecho_negado_sin_razones_no_cumple(self):
+        hechos = [{"hecho": "El contrato terminó el 1 de marzo.", "respuesta": "niega", "razones": ""}]
+        r = self.crear(pronunciamientos_hechos=hechos)
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(self.faltan(r), {2})
+        faltas = next(i for i in r.data["requisitos"]["items"] if i["numeral"] == 2)["falta"]
+        self.assertTrue(any("presumirá cierto" in f for f in faltas))
+
+    def test_hecho_admitido_no_necesita_razones(self):
+        hechos = [{"hecho": "El contrato terminó el 1 de marzo.", "respuesta": "admite", "razones": ""}]
+        self.assertEqual(self.faltan(self.crear(pronunciamientos_hechos=hechos)), set())
+
+    def test_respuesta_invalida_y_hecho_corto_se_rechazan(self):
+        mal = [{"hecho": "El contrato terminó el 1 de marzo.", "respuesta": "tal vez", "razones": ""}]
+        self.assertEqual(self.crear(pronunciamientos_hechos=mal).status_code, 400)
+        corto = [{"hecho": "ok", "respuesta": "admite", "razones": ""}]
+        self.assertEqual(self.crear(pronunciamientos_hechos=corto).status_code, 400)
+        self.assertEqual(self.crear(pronunciamientos_hechos="no es lista").status_code, 400)
+
+    def test_renglones_vacios_se_descartan(self):
+        vacios = COMPLETA96["pronunciamientos_hechos"] + [{"hecho": "", "respuesta": "", "razones": ""}]
+        r = self.crear(pronunciamientos_hechos=vacios)
+        self.assertEqual(len(r.data["pronunciamientos_hechos"]), 3)
+
+    def test_excepcion_sin_fundamento_no_cumple_y_sin_excepciones_si(self):
+        r = self.crear(excepciones_merito=[{"nombre": "Prescripción", "fundamento": ""}])
+        self.assertEqual(self.faltan(r), {3})
+        r = self.crear(excepciones_merito=[], sin_excepciones=True)
+        self.assertEqual(self.faltan(r), set())
+        r = self.crear(excepciones_merito=[{"nombre": "x", "fundamento": "algo"}])
+        self.assertEqual(r.status_code, 400)
+
+    def test_juramento_y_retencion_solo_se_exigen_si_se_marcan(self):
+        self.assertEqual(self.faltan(self.crear(objeta_juramento_estimatorio=True)), {3})
+        self.assertEqual(self.faltan(self.crear(alega_derecho_retencion=True)), {3})
+        r = self.crear(objeta_juramento_estimatorio=True, objecion_juramento="Se objeta el valor estimado por exceder lo debido.",
+                       alega_derecho_retencion=True, derecho_retencion="Se retiene el bien hasta el pago de las mejoras.")
+        self.assertEqual(self.faltan(r), set())
+
+    def test_pruebas_pueden_obrar_ya_en_el_expediente(self):
+        self.assertEqual(self.faltan(self.crear(pruebas="", pruebas_en_expediente=True)), set())
+        self.assertEqual(self.faltan(self.crear(pruebas="", pruebas_en_expediente=False)), {4})
+
+    def test_demandado_sin_apoderado_no_exige_datos_ni_poder(self):
+        r = self.crear(sin_apoderado=True, apoderado_nombre="", apoderado_documento="", apoderado_tarjeta_profesional="",
+                       apoderado_domicilio="", anexo_poder=False, notif_apoderado_email="")
+        self.assertEqual(self.faltan(r), set())
+
+    def test_apoderado_exige_poder_y_persona_juridica_exige_existencia(self):
+        self.assertEqual(self.faltan(self.crear(anexo_poder=False)), {6})
+        self.assertEqual(self.faltan(self.crear(anexo_existencia_representacion=False)), {6})
+
+    def test_validacion_de_documentos(self):
+        self.assertEqual(self.crear(demandado_documento="123").status_code, 400)  # NIT de 3 dígitos
+        self.assertEqual(self.crear(demandado_tipo_documento="CC").status_code, 400)  # jurídica con CC
+        self.assertEqual(self.crear(apoderado_documento="abc").status_code, 400)
+        self.assertEqual(self.crear(notif_demandado_email="notificaciones").status_code, 400)
+        r = self.crear(demandado_documento="800.765.432-1")
+        self.assertEqual(r.data["demandado_documento"], "800765432-1")
+
+    def test_borrador_sigue_los_numerales_del_articulo_96(self):
+        pk = self.crear().data["id"]
+        texto = self.client.get(f"/api/contestaciones/{pk}/generar-borrador/").data["borrador"]
+        for esperado in (
+            "NIT 800765432-1", "AL HECHO 1: SE ADMITE.", "AL HECHO 2: NO ES CIERTO.", "AL HECHO 3: NO ME CONSTA.",
+            "El vencimiento pactado fue el 31 de diciembre de 2026", "INEXIGIBILIDAD DE LA OBLIGACIÓN",
+            "No se formula objeción al juramento estimatorio", "T.P. 123456", "Certificado de existencia y representación",
+            "V. NOTIFICACIONES",
+        ):
+            self.assertIn(esperado, texto)
+
+    def test_borrador_marca_lo_que_falta(self):
+        pk = self.client.post("/api/contestaciones/", {"clase_proceso": "Verbal", "demandante": "Ana Pérez", "demandado": "Empresa XYZ"}, format="json").data["id"]
+        texto = self.client.get(f"/api/contestaciones/{pk}/generar-borrador/").data["borrador"]
+        self.assertIn("[Pronúnciese sobre cada hecho", texto)
+        self.assertIn("[Excepciones de mérito", texto)
+
+    def test_vincular_demanda_respeta_el_alcance(self):
+        ajena = Demanda.objects.create(clase_proceso="Verbal", demandante="A B", demandado="C D", pretensiones="Pretensiones de prueba.",
+                                       abogado_responsable=self.otro)
+        propia = Demanda.objects.create(clase_proceso="Verbal", demandante="A B", demandado="C D", pretensiones="Pretensiones de prueba.",
+                                        abogado_responsable=self.abogado)
+        self.assertEqual(self.crear(demanda=ajena.pk).status_code, 400)
+        r = self.crear(demanda=propia.pk)
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertIn("Verbal", r.data["demanda_texto"])
+        self.client.force_authenticate(self.admin)
+        self.assertEqual(self.crear(demanda=ajena.pk).status_code, 201)
+
+    def test_presentada_con_requisitos_incompletos_se_guarda_y_avisa(self):
+        r = self.client.post("/api/contestaciones/", {
+            "clase_proceso": "Verbal", "demandante": "Ana Pérez", "demandado": "Empresa XYZ", "estado": "presentada",
+            "fecha_notificacion": (timezone.localdate() - timedelta(days=5)).isoformat(),
+            "fecha_presentacion": timezone.localdate().isoformat(),
+        }, format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertLess(r.data["requisitos"]["cumplidos"], r.data["requisitos"]["total"])
