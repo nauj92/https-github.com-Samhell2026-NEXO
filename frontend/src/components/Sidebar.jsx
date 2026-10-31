@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Scale, LogOut, Gavel, Calculator, Eye, FileText, ChevronDown, ChevronRight, Briefcase, Bell,
-  FileSignature, Send, Users, CalendarDays, Contact,
+  FileSignature, Send, Users, CalendarDays, Contact, LayoutDashboard, ChevronsLeft, ChevronsRight,
 } from "lucide-react";
 import api from "../api";
 
 // Menú con grupos desplegables (pueden anidarse). Un elemento sin `children` es un enlace directo.
 const menu = [
+  { to: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
   {
     id: "liquidacion", label: "Liquidación", Icon: Calculator,
     children: [
@@ -45,6 +46,18 @@ const idsActivos = (items, ruta) =>
   items.flatMap((m) => (m.children && contiene(m, ruta) ? [m.id, ...idsActivos(m.children, ruta)] : []));
 
 const CLAVE_MENU = "menu_abiertos";
+const CLAVE_COMPACTO = "menu_colapsado";
+
+// Paleta del menú: azul institucional más claro, con dorado como acento.
+const COLOR = {
+  fondo: "linear-gradient(180deg, #1d3f66 0%, #25507d 100%)",
+  texto: "#dbe6f2",
+  apagado: "#b4c6da",
+  activo: "#3b6ea5",
+  hover: "#2d5b8d",
+  borde: "#4a77a8",
+  acento: "#d4a743",
+};
 
 function leerAbiertos() {
   try {
@@ -66,6 +79,31 @@ export default function Sidebar() {
   const [perfil, setPerfil] = useState(null);
   const location = useLocation();
   const [abiertos, setAbiertos] = useState(leerAbiertos);
+
+  // Menú compacto (solo iconos): se recuerda en el navegador y solo aplica en pantallas grandes.
+  const [preferCompacto, setPreferCompacto] = useState(() => {
+    try {
+      return localStorage.getItem(CLAVE_COMPACTO) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [esMovil, setEsMovil] = useState(() => window.matchMedia("(max-width: 1100px)").matches);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1100px)");
+    const f = () => setEsMovil(mq.matches);
+    mq.addEventListener("change", f);
+    return () => mq.removeEventListener("change", f);
+  }, []);
+  const compacto = preferCompacto && !esMovil;
+  const cambiarCompacto = (valor) => {
+    setPreferCompacto(valor);
+    try {
+      localStorage.setItem(CLAVE_COMPACTO, valor ? "1" : "0");
+    } catch {
+      /* sin almacenamiento */
+    }
+  };
 
   useEffect(() => {
     api.get("/perfil/").then((response) => setPerfil(response.data)).catch(() => {});
@@ -99,6 +137,11 @@ export default function Sidebar() {
   const handleLogout = () => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
+    try {
+      localStorage.removeItem(CLAVE_MENU);
+    } catch {
+      /* sin almacenamiento */
+    }
     navigate("/login");
   };
 
@@ -118,13 +161,15 @@ export default function Sidebar() {
   return (
     <aside
       style={{
-        width: "260px",
-        background: "#0a1a2b",
-        color: "#b0c4de",
+        width: compacto ? "76px" : "260px",
+        background: COLOR.fondo,
+        color: COLOR.texto,
         display: "flex",
         flexDirection: "column",
-        padding: "24px 16px",
+        padding: compacto ? "24px 10px" : "24px 16px",
         minHeight: "100vh",
+        transition: "width 0.2s ease",
+        overflowX: "hidden",
       }}
     >
       <div
@@ -139,26 +184,40 @@ export default function Sidebar() {
           gap: "10px",
         }}
       >
-        <Scale size={24} color="#d4a743" />
-        <span>ERP OPERADOR JUDICIAL</span>
+        <Scale size={24} color={COLOR.acento} style={{ flexShrink: 0 }} />
+        {!compacto && <span style={{ flex: 1 }}>ERP OPERADOR JUDICIAL</span>}
       </div>
+
+      {!esMovil && (
+        <button
+          type="button"
+          onClick={() => cambiarCompacto(!compacto)}
+          title={compacto ? "Desplegar menú" : "Plegar menú"}
+          aria-label={compacto ? "Desplegar menú" : "Plegar menú"}
+          style={{ alignSelf: compacto ? "center" : "flex-end", background: "rgba(255,255,255,0.12)", border: "none", color: "white", borderRadius: "8px", padding: "6px", cursor: "pointer", display: "flex", marginBottom: "14px" }}
+        >
+          {compacto ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+        </button>
+      )}
 
       <nav style={{ flex: 1 }}>
         {menu.map((item) => (
-          <ElementoMenu key={item.id || item.to} item={item} nivel={0} abiertos={abiertos} alternar={alternar} ruta={location.pathname} />
+          <ElementoMenu key={item.id || item.to} item={item} nivel={0} abiertos={abiertos} alternar={alternar} ruta={location.pathname} compacto={compacto} expandir={() => cambiarCompacto(false)} />
         ))}
       </nav>
 
       <NavLink
         to="/notificaciones"
         style={({ isActive }) => ({
-          display: "flex", alignItems: "center", gap: "12px", padding: "10px 16px", borderRadius: "10px", marginBottom: "8px",
-          textDecoration: "none", fontSize: "14px", color: isActive ? "white" : "#8899b4", background: isActive ? "#1f3b57" : "transparent",
+          display: "flex", alignItems: "center", justifyContent: compacto ? "center" : "flex-start", gap: "12px", padding: compacto ? "10px 0" : "10px 16px", borderRadius: "10px", marginBottom: "8px",
+          textDecoration: "none", fontSize: "14px", color: isActive ? "white" : COLOR.apagado, background: isActive ? COLOR.activo : "transparent",
+          boxShadow: isActive ? `inset 3px 0 0 ${COLOR.acento}` : "none",
         })}
+        title="Notificaciones"
       >
         <Bell size={18} />
-        <span style={{ flex: 1 }}>Notificaciones</span>
-        {sinLeer > 0 && (
+        {!compacto && <span style={{ flex: 1 }}>Notificaciones</span>}
+        {sinLeer > 0 && !compacto && (
           <span style={{ background: "#c73a3a", color: "white", borderRadius: "30px", fontSize: "11px", fontWeight: 700, padding: "2px 8px" }}>{sinLeer}</span>
         )}
       </NavLink>
@@ -170,8 +229,9 @@ export default function Sidebar() {
             display: "flex",
             alignItems: "center",
             gap: "12px",
-            padding: "12px",
-            borderTop: "1px solid #1e354b",
+            padding: compacto ? "12px 0" : "12px",
+            justifyContent: compacto ? "center" : "flex-start",
+            borderTop: `1px solid ${COLOR.borde}`,
             marginBottom: "12px",
             cursor: "pointer",
           }}
@@ -181,8 +241,8 @@ export default function Sidebar() {
               width: "40px",
               height: "40px",
               borderRadius: "50%",
-              background: "#d4a743",
-              color: "#0a1a2b",
+              background: COLOR.acento,
+              color: "#14304f",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -192,23 +252,24 @@ export default function Sidebar() {
           >
             {iniciales}
           </div>
-          <div style={{ overflow: "hidden" }}>
+          {!compacto && <div style={{ overflow: "hidden" }}>
             <div style={{ color: "white", fontWeight: 600, fontSize: "14px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {nombreCompleto}
             </div>
-            <div style={{ fontSize: "12px", color: "#8899b4" }}>
+            <div style={{ fontSize: "12px", color: COLOR.apagado }}>
               {rolLabels[perfil.rol] || perfil.rol}
             </div>
-          </div>
+          </div>}
         </div>
       )}
 
       <button
         onClick={handleLogout}
+        title="Cerrar sesión"
         style={{
           background: "transparent",
-          border: "1px solid #1e354b",
-          color: "#b0c4de",
+          border: `1px solid ${COLOR.borde}`,
+          color: COLOR.texto,
           padding: "10px",
           borderRadius: "8px",
           cursor: "pointer",
@@ -219,36 +280,42 @@ export default function Sidebar() {
         }}
       >
         <LogOut size={16} />
-        Cerrar sesión
+        {!compacto && "Cerrar sesión"}
       </button>
     </aside>
   );
 }
 
-function ElementoMenu({ item, nivel, abiertos, alternar, ruta }) {
-  if (!item.children) return <EnlaceMenu {...item} sub={nivel > 0} />;
+function ElementoMenu({ item, nivel, abiertos, alternar, ruta, compacto, expandir }) {
+  if (!item.children) return <EnlaceMenu {...item} sub={nivel > 0} compacto={compacto} />;
   const abierto = !!abiertos[item.id];
   const activo = contiene(item, ruta);
   return (
     <div style={{ marginBottom: "4px" }}>
       <button
         type="button"
-        onClick={() => alternar(item.id)}
+        onClick={() => {
+          if (compacto) {
+            expandir();
+            if (!abierto) alternar(item.id);
+          } else alternar(item.id);
+        }}
+        title={item.label}
         aria-expanded={abierto}
         style={{
-          width: "100%", display: "flex", alignItems: "center", gap: "12px", padding: nivel ? "9px 12px" : "12px 16px",
+          width: "100%", display: "flex", alignItems: "center", justifyContent: compacto ? "center" : "flex-start", gap: "12px", padding: compacto ? "12px 0" : nivel ? "9px 12px" : "12px 16px",
           borderRadius: "10px", border: "none", cursor: "pointer", fontSize: nivel ? "14px" : "inherit", fontFamily: "inherit",
-          fontWeight: 500, textAlign: "left", background: "transparent", color: activo ? "white" : "#8899b4",
+          fontWeight: 500, textAlign: "left", background: activo && nivel === 0 ? "rgba(255,255,255,0.10)" : "transparent", color: activo ? "white" : COLOR.apagado,
         }}
       >
         {nivel === 0 && <item.Icon size={18} />}
-        <span style={{ flex: 1 }}>{item.label}</span>
-        {abierto ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        {!compacto && <span style={{ flex: 1, textAlign: "left" }}>{item.label}</span>}
+        {!compacto && (abierto ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
       </button>
-      {abierto && (
-        <div style={{ marginLeft: "18px", paddingLeft: "8px", borderLeft: "1px solid #1e354b" }}>
+      {abierto && !compacto && (
+        <div style={{ marginLeft: "18px", paddingLeft: "8px", borderLeft: `1px solid ${COLOR.borde}` }}>
           {item.children.map((h) => (
-            <ElementoMenu key={h.id || h.to} item={h} nivel={nivel + 1} abiertos={abiertos} alternar={alternar} ruta={ruta} />
+            <ElementoMenu key={h.id || h.to} item={h} nivel={nivel + 1} abiertos={abiertos} alternar={alternar} ruta={ruta} compacto={compacto} expandir={expandir} />
           ))}
         </div>
       )}
@@ -256,26 +323,29 @@ function ElementoMenu({ item, nivel, abiertos, alternar, ruta }) {
   );
 }
 
-function EnlaceMenu({ to, label, Icon, sub }) {
+function EnlaceMenu({ to, label, Icon, sub, compacto }) {
   return (
     <NavLink
       to={to}
       style={({ isActive }) => ({
         display: "flex",
         alignItems: "center",
+        justifyContent: compacto ? "center" : "flex-start",
         gap: "12px",
-        padding: sub ? "9px 12px" : "12px 16px",
+        padding: compacto ? "12px 0" : sub ? "9px 12px" : "12px 16px",
         borderRadius: "10px",
         marginBottom: "4px",
         textDecoration: "none",
         fontSize: sub ? "14px" : "inherit",
-        color: isActive ? "white" : "#8899b4",
-        background: isActive ? "#1f3b57" : "transparent",
+        color: isActive ? "white" : COLOR.apagado,
+        background: isActive ? COLOR.activo : "transparent",
+        boxShadow: isActive ? `inset 3px 0 0 ${COLOR.acento}` : "none",
         fontWeight: 500,
       })}
+      title={label}
     >
       {!sub && <Icon size={18} />}
-      <span>{label}</span>
+      {!compacto && <span>{label}</span>}
     </NavLink>
   );
 }

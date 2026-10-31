@@ -11,7 +11,7 @@ export const inputStyle = {
 };
 export const thStyle = { textAlign: "left", padding: "14px 16px", color: "#6b7f96", fontWeight: 600, borderBottom: "1px solid #e9edf2" };
 export const tdStyle = { padding: "12px 16px", verticalAlign: "top" };
-export const botonPrimario = { background: "#0a1a2b", color: "white", border: "none", padding: "10px 20px", borderRadius: "30px", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" };
+export const botonPrimario = { background: "#1d3f66", color: "white", border: "none", padding: "10px 20px", borderRadius: "30px", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" };
 export const botonSecundario = { padding: "10px 16px", borderRadius: "8px", border: "1px solid #d0d9e3", background: "white", cursor: "pointer" };
 export const enlace = (color = "#1f3b57") => ({ color, fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px", background: "none", border: "none", padding: 0, fontSize: "14px" });
 

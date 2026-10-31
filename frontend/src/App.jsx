@@ -4,6 +4,7 @@ import Expedientes from "./pages/Expedientes";
 import Audiencias from "./pages/Audiencias";
 import Configuracion from "./pages/Configuracion";
 import Abogados from "./pages/Abogados";
+import Dashboard from "./pages/Dashboard";
 import Clientes from "./pages/Clientes";
 import Demandas from "./pages/Demandas";
 import Contestaciones from "./pages/Contestaciones";
@@ -22,6 +23,8 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/recuperar" element={<RecuperarPassword />} />
         <Route path="/restablecer/:uid/:token" element={<RestablecerPassword />} />
+
+        <Route path="/dashboard" element={<Dashboard />} />
 
         {/* Liquidación */}
         <Route path="/liquidacion" element={<Navigate to="/liquidacion/laboral" replace />} />
@@ -45,7 +48,7 @@ export default function App() {
 
         {/* Rutas de pantallas retiradas del menú */}
         <Route path="/usuarios" element={<Navigate to="/abogados" replace />} />
-        <Route path="*" element={<Navigate to="/liquidacion/laboral" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   );
