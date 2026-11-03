@@ -139,6 +139,8 @@ export default function Expedientes() {
     }
   };
 
+  const recargarHistorial = (id) => api.get(`/expedientes/${id}/historial/`).then((r) => setHistorial(r.data)).catch(() => {});
+
   const [nuevaEtapa, setNuevaEtapa] = useState({ nombre: "", fecha_limite: "", dias_habiles: "" });
   const [guardandoEtapa, setGuardandoEtapa] = useState(false);
 
@@ -159,6 +161,7 @@ export default function Expedientes() {
       const response = await api.get(`/expedientes/${detalle.id}/`);
       setDetalle(response.data);
       cargarExpedientes();
+      recargarHistorial(detalle.id);
     } catch (err) {
       alert(mensajeError(err, "No se pudo agregar la etapa."));
     } finally {
@@ -172,6 +175,7 @@ export default function Expedientes() {
       const response = await api.get(`/expedientes/${detalle.id}/`);
       setDetalle(response.data);
       cargarExpedientes();
+      recargarHistorial(detalle.id);
     } catch (err) {
       alert(mensajeError(err, "No se pudo actualizar la etapa."));
     }
@@ -208,6 +212,7 @@ export default function Expedientes() {
       await api.post(`/expedientes/${detalle.id}/documentos/`, fd);
       const r = await api.get(`/expedientes/${detalle.id}/documentos/`);
       setDocumentos(r.data);
+      recargarHistorial(detalle.id);
     } catch (err) {
       setErrorDoc(mensajeError(err, "No se pudo subir el archivo."));
     } finally {

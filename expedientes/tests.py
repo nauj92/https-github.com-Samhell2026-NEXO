@@ -549,3 +549,86 @@ class DocumentosSinConfiguracionTests(BaseApi):
 
         self.assertFalse(almacenamiento.configurado())
         self.assertEqual(DocumentoExpediente.limite(), DocumentoExpediente.TAMANO_MAXIMO)
+
+
+class HistorialDocumentosYEtapasTests(BaseApi):
+    """El historial de cambios también muestra documentos y etapas."""
+
+    def historial(self, exp=None):
+        exp = exp or self.exp_propio
+        return self.client.get(f"/api/expedientes/{exp.pk}/historial/").data
+
+    def subir(self, nombre="demanda.pdf"):
+        archivo = SimpleUploadedFile(nombre, b"%PDF-1.4 prueba", content_type="application/pdf")
+        return self.client.post(f"/api/expedientes/{self.exp_propio.pk}/documentos/", {"archivo": archivo}, format="multipart")
+
+    def test_adjuntar_y_eliminar_un_documento_queda_en_el_historial(self):
+        self.como(self.abogado)
+        doc = self.subir("poder.pdf").data
+        self.client.delete(f"/api/expedientes/{self.exp_propio.pk}/documentos/{doc['id']}/")
+        eventos = self.historial()
+        self.assertEqual(eventos[0]["tipo"], "Documento eliminado")
+        self.assertEqual(eventos[0]["cambios"], [{"campo": "Documento", "anterior": "poder.pdf", "nuevo": "—"}])
+        self.assertEqual(eventos[1]["tipo"], "Documento adjuntado")
+        self.assertEqual(eventos[1]["cambios"], [{"campo": "Documento", "anterior": "—", "nuevo": "poder.pdf"}])
+        self.assertEqual(eventos[0]["usuario"], self.abogado.get_full_name())
+
+    def test_el_registro_sobrevive_a_la_eliminacion_del_documento(self):
+        self.como(self.abogado)
+        doc = self.subir().data
+        self.client.delete(f"/api/expedientes/{self.exp_propio.pk}/documentos/{doc['id']}/")
+        self.assertEqual(DocumentoExpediente.objects.count(), 0)
+        self.assertIn("Documento adjuntado", [e["tipo"] for e in self.historial()])
+
+    def test_un_documento_rechazado_no_deja_evento(self):
+        self.como(self.abogado)
+        archivo = SimpleUploadedFile("virus.exe", b"x", content_type="application/octet-stream")
+        self.client.post(f"/api/expedientes/{self.exp_propio.pk}/documentos/", {"archivo": archivo}, format="multipart")
+        self.assertEqual([e["tipo"] for e in self.historial()], ["Creación"])
+
+    def test_agregar_etapa(self):
+        self.como(self.abogado)
+        r = self.client.post(
+            "/api/etapas/", {"expediente": self.exp_propio.pk, "nombre": "Contestación", "fecha_limite": "2026-12-01"}, format="json"
+        )
+        self.assertEqual(r.status_code, 201, r.data)
+        ev = self.historial()[0]
+        self.assertEqual(ev["tipo"], "Etapa agregada")
+        self.assertEqual(ev["cambios"], [{"campo": "Etapa", "anterior": "—", "nuevo": "Contestación (01/12/2026)"}])
+
+    def test_cambiar_estado_de_una_etapa(self):
+        etapa = EtapaProceso.objects.create(expediente=self.exp_propio, nombre="Audiencia inicial")
+        self.como(self.abogado)
+        self.client.patch(f"/api/etapas/{etapa.pk}/", {"estado": "en_curso"}, format="json")
+        ev = self.historial()[0]
+        self.assertEqual(ev["tipo"], "Etapa modificada")
+        self.assertEqual(
+            ev["cambios"], [{"campo": "Etapa «Audiencia inicial» · Estado", "anterior": "Pendiente", "nuevo": "En curso"}]
+        )
+
+    def test_una_modificacion_sin_cambios_no_deja_evento(self):
+        etapa = EtapaProceso.objects.create(expediente=self.exp_propio, nombre="Audiencia inicial")
+        self.como(self.abogado)
+        self.client.patch(f"/api/etapas/{etapa.pk}/", {"estado": "pendiente"}, format="json")
+        self.assertEqual([e["tipo"] for e in self.historial()], ["Creación"])
+
+    def test_eliminar_una_etapa(self):
+        etapa = EtapaProceso.objects.create(expediente=self.exp_propio, nombre="Alegatos")
+        self.como(self.abogado)
+        self.assertEqual(self.client.delete(f"/api/etapas/{etapa.pk}/").status_code, 204)
+        ev = self.historial()[0]
+        self.assertEqual(ev["tipo"], "Etapa eliminada")
+        self.assertEqual(ev["cambios"], [{"campo": "Etapa", "anterior": "Alegatos", "nuevo": "—"}])
+
+    def test_el_historial_va_del_mas_reciente_al_mas_antiguo(self):
+        self.como(self.abogado)
+        self.subir()
+        self.client.patch(f"/api/expedientes/{self.exp_propio.pk}/", {"estado": "tramite"}, format="json")
+        fechas = [e["fecha"] for e in self.historial()]
+        self.assertEqual(fechas, sorted(fechas, reverse=True))
+
+    def test_los_eventos_de_un_expediente_ajeno_no_se_ven(self):
+        self.como(self.abogado)
+        self.subir()
+        self.como(self.otro)
+        self.assertEqual(self.client.get(f"/api/expedientes/{self.exp_propio.pk}/historial/").status_code, 404)

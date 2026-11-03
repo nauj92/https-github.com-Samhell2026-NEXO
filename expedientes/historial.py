@@ -73,4 +73,15 @@ def historial_de(expediente):
                 "cambios": cambios,
             }
         )
+    # Documentos y etapas (adjuntar, eliminar, cambiar estado...) se registran aparte
+    for ev in expediente.eventos.select_related("usuario"):
+        eventos.append(
+            {
+                "fecha": ev.fecha,
+                "tipo": ev.tipo,
+                "usuario": (ev.usuario.get_full_name() or ev.usuario.username) if ev.usuario else "Sistema",
+                "cambios": ev.cambios,
+            }
+        )
+    eventos.sort(key=lambda e: e["fecha"], reverse=True)
     return eventos

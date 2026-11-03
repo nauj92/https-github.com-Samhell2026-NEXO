@@ -19,7 +19,7 @@ from core.permisos import EsDirectivo, es_directivo, expedientes_visibles, factu
 from facturacion.models import Factura
 
 from .historial import historial_de
-from . import almacenamiento
+from . import almacenamiento, eventos
 from .models import DocumentoExpediente, EtapaProceso, Expediente, Juzgado
 from .serializers import (
     DocumentoExpedienteSerializer,
@@ -149,6 +149,7 @@ class ExpedienteViewSet(EliminarProtegidoMixin, viewsets.ModelViewSet):
             if ruta_externa:
                 almacenamiento.borrar(ruta_externa)
             raise
+        eventos.registrar(expediente, request.user, "Documento adjuntado", [("Documento", "—", doc.nombre)])
         return Response(DocumentoExpedienteSerializer(doc).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get", "delete"], url_path=r"documentos/(?P<doc_id>[0-9]+)")
@@ -166,6 +167,7 @@ class ExpedienteViewSet(EliminarProtegidoMixin, viewsets.ModelViewSet):
                     {"detail": "Solo quien subió el documento, un socio o un administrador puede eliminarlo."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
+            eventos.registrar(expediente, request.user, "Documento eliminado", [("Documento", doc.nombre, "—")])
             doc.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -184,6 +186,22 @@ class EtapaProcesoViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return EtapaProceso.objects.filter(expediente__in=expedientes_visibles(self.request.user))
+
+    # Cada cambio en las etapas queda en el historial del expediente
+    def perform_create(self, serializer):
+        etapa = serializer.save()
+        eventos.registrar(etapa.expediente, self.request.user, "Etapa agregada", [("Etapa", "—", eventos.texto_etapa(etapa))])
+
+    def perform_update(self, serializer):
+        antes = eventos.instantanea_etapa(serializer.instance)
+        etapa = serializer.save()
+        cambios = eventos.cambios_de_etapa(antes, etapa)
+        if cambios:
+            eventos.registrar(etapa.expediente, self.request.user, "Etapa modificada", cambios)
+
+    def perform_destroy(self, instance):
+        eventos.registrar(instance.expediente, self.request.user, "Etapa eliminada", [("Etapa", eventos.texto_etapa(instance), "—")])
+        instance.delete()
 
 
 class DashboardStatsView(APIView):

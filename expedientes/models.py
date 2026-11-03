@@ -132,6 +132,30 @@ class DocumentoExpediente(models.Model):
         ordering = ["-subido_en"]
 
 
+class EventoExpediente(models.Model):
+    """Lo que pasa alrededor de un expediente y no queda en el historial de sus campos:
+    documentos adjuntados o eliminados y etapas agregadas, modificadas o eliminadas.
+
+    No se enlaza al documento ni a la etapa para que el registro sobreviva a su eliminación.
+    """
+
+    expediente = models.ForeignKey(Expediente, on_delete=models.CASCADE, related_name="eventos")
+    tipo = models.CharField(max_length=60)
+    cambios = models.JSONField(default=list, blank=True, help_text="Lista de {campo, anterior, nuevo}")
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.expediente.numero} - {self.tipo}"
+
+    class Meta:
+        verbose_name = "Evento del expediente"
+        verbose_name_plural = "Eventos del expediente"
+        ordering = ["-fecha", "-id"]
+
+
 @receiver(post_delete, sender=DocumentoExpediente)
 def _borrar_archivo_externo(sender, instance, **kwargs):
     """Al eliminar el documento se elimina también su archivo del almacenamiento externo."""
