@@ -196,8 +196,9 @@ export default function Expedientes() {
     e.target.value = "";
     if (!archivo) return;
     setErrorDoc("");
-    if (archivo.size > 5 * 1024 * 1024) {
-      setErrorDoc("El archivo supera el tamaño máximo permitido (5 MB).");
+    // El servidor decide el límite real (5 MB en la base de datos, 25 MB con almacenamiento externo)
+    if (archivo.size > 25 * 1024 * 1024) {
+      setErrorDoc("El archivo supera el tamaño máximo permitido (25 MB).");
       return;
     }
     const fd = new FormData();
@@ -216,7 +217,7 @@ export default function Expedientes() {
 
   const handleDescargarDocumento = async (doc) => {
     try {
-      const r = await api.get(`/expedientes/${detalle.id}/documento/${doc.id}/`, { responseType: "blob" });
+      const r = await api.get(`/expedientes/${detalle.id}/documentos/${doc.id}/`, { responseType: "blob" });
       const url = URL.createObjectURL(r.data);
       const a = document.createElement("a");
       a.href = url;
@@ -231,7 +232,7 @@ export default function Expedientes() {
   const handleEliminarDocumento = async (doc) => {
     if (!window.confirm(`¿Eliminar el documento "${doc.nombre}"?`)) return;
     try {
-      await api.delete(`/expedientes/${detalle.id}/documento/${doc.id}/`);
+      await api.delete(`/expedientes/${detalle.id}/documentos/${doc.id}/`);
       setDocumentos((prev) => prev.filter((d) => d.id !== doc.id));
       api.get(`/expedientes/${detalle.id}/historial/`).then((r) => setHistorial(r.data)).catch(() => {});
     } catch (err) {
@@ -575,7 +576,7 @@ export default function Expedientes() {
                 {subiendo ? "Subiendo..." : "+ Adjuntar documento"}
                 <input type="file" onChange={handleSubirDocumento} disabled={subiendo} style={{ display: "none" }} accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt" />
               </label>
-              <p style={{ fontSize: "11px", color: "#6b7f96" }}>PDF, Word, Excel, imágenes o texto. Máximo 5 MB.</p>
+              <p style={{ fontSize: "11px", color: "#6b7f96" }}>PDF, Word, Excel, imágenes o texto. Máximo 5 MB (25 MB si el despacho activó el almacenamiento externo).</p>
 
               <h4 style={{ marginTop: "24px", marginBottom: "10px" }}>🕑 Historial de cambios</h4>
               {historial.length === 0 && <p style={{ color: "#6b7f96", fontSize: "13px" }}>Sin cambios registrados.</p>}
