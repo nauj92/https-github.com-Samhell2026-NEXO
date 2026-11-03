@@ -181,6 +181,19 @@ export default function Expedientes() {
     }
   };
 
+  const handleEliminarEtapa = async (etapa) => {
+    if (!window.confirm(`¿Eliminar la etapa "${etapa.nombre}"?`)) return;
+    try {
+      await api.delete(`/etapas/${etapa.id}/`);
+      const response = await api.get(`/expedientes/${detalle.id}/`);
+      setDetalle(response.data);
+      cargarExpedientes();
+      recargarHistorial(detalle.id);
+    } catch (err) {
+      alert(mensajeError(err, "No se pudo eliminar la etapa."));
+    }
+  };
+
   const [documentos, setDocumentos] = useState([]);
   const [historial, setHistorial] = useState([]);
   const [subiendo, setSubiendo] = useState(false);
@@ -516,11 +529,14 @@ export default function Expedientes() {
                       )}
                     </span>
                   </div>
-                  <select value={etapa.estado} onChange={(e) => handleCambiarEstadoEtapa(etapa.id, e.target.value)} style={{ fontSize: "12px", padding: "3px 6px", borderRadius: "6px", border: "1px solid #d0d9e3" }}>
-                    <option value="pendiente">Pendiente</option>
-                    <option value="en_curso">En curso</option>
-                    <option value="completada">Completada</option>
-                  </select>
+                  <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <select value={etapa.estado} onChange={(e) => handleCambiarEstadoEtapa(etapa.id, e.target.value)} style={{ fontSize: "12px", padding: "3px 6px", borderRadius: "6px", border: "1px solid #d0d9e3" }}>
+                      <option value="pendiente">Pendiente</option>
+                      <option value="en_curso">En curso</option>
+                      <option value="completada">Completada</option>
+                    </select>
+                    <button type="button" onClick={() => handleEliminarEtapa(etapa)} title="Eliminar etapa" style={{ padding: "3px 8px", borderRadius: "6px", border: "none", background: "#fde8e8", color: "#c73a3a", cursor: "pointer", fontSize: "12px" }}>Eliminar</button>
+                  </span>
                 </div>
               ))}
 
