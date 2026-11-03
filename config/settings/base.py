@@ -190,4 +190,16 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-]
+]
+
+# Plazos: si es True, los términos en días hábiles también descuentan la vacancia judicial
+# (Semana Santa y del 20 de diciembre al 10 de enero). Apagado por defecto.
+PLAZOS_CON_VACANCIA = env.bool("PLAZOS_CON_VACANCIA", default=False)
+
+# Almacenamiento externo de documentos (opcional, compatible con S3). Si DOCUMENTOS_BUCKET está vacío,
+# los archivos se guardan en la base de datos con un límite de 5 MB. Ver expedientes/almacenamiento.py.
+DOCUMENTOS_BUCKET = env("DOCUMENTOS_BUCKET", default="")
+DOCUMENTOS_ENDPOINT_URL = env("DOCUMENTOS_ENDPOINT_URL", default="")
+DOCUMENTOS_REGION = env("DOCUMENTOS_REGION", default="")
+DOCUMENTOS_ACCESS_KEY_ID = env("DOCUMENTOS_ACCESS_KEY_ID", default="")
+DOCUMENTOS_SECRET_ACCESS_KEY = env("DOCUMENTOS_SECRET_ACCESS_KEY", default="")

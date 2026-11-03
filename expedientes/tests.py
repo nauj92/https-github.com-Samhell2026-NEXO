@@ -4,7 +4,8 @@ from unittest import mock
 
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import SimpleTestCase
+from django.core.management import call_command
+from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
@@ -435,3 +436,116 @@ class ClasificacionPorCodigoTests(SimpleTestCase):
         self.assertEqual(d["especialidad"], "CIVIL")
         d = interpretar_despacho("050002205000 - SALA LABORAL DEL TRIBUNAL SUPERIOR DE ANTIOQUIA")
         self.assertEqual((d["entidad"], d["especialidad"]), ("TRIBUNAL SUPERIOR", "LABORAL"))
+
+
+class S3Falso:
+    """Cliente S3 en memoria para las pruebas (no sale a internet)."""
+
+    def __init__(self):
+        self.objetos = {}
+        self.falla = False
+
+    def put_object(self, Bucket, Key, Body, ContentType=None):
+        if self.falla:
+            raise OSError("sin conexión")
+        self.objetos[(Bucket, Key)] = Body
+
+    def get_object(self, Bucket, Key):
+        if self.falla:
+            raise OSError("sin conexión")
+        return {"Body": io.BytesIO(self.objetos[(Bucket, Key)])}
+
+    def delete_object(self, Bucket, Key):
+        self.objetos.pop((Bucket, Key), None)
+
+
+@override_settings(DOCUMENTOS_BUCKET="bucket-de-prueba")
+class DocumentosAlmacenamientoExternoTests(DocumentosApiTests):
+    """Repite todas las pruebas de documentos con el almacenamiento externo activo, y agrega las propias."""
+
+    def setUp(self):
+        super().setUp()
+        self.s3 = S3Falso()
+        parche = mock.patch("expedientes.almacenamiento._cliente", return_value=self.s3)
+        parche.start()
+        self.addCleanup(parche.stop)
+
+    def test_rechaza_archivo_demasiado_grande(self):
+        self.como(self.abogado)
+        with mock.patch.object(DocumentoExpediente, "TAMANO_MAXIMO_EXTERNO", 10):
+            r = self.subir(contenido=b"x" * 11)
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("tamaño máximo", r.data["detail"])
+
+    def test_el_archivo_queda_fuera_de_la_base_de_datos(self):
+        self.como(self.abogado)
+        r = self.subir(contenido=b"%PDF externo")
+        self.assertEqual(r.status_code, 201, r.data)
+        doc = DocumentoExpediente.objects.get(pk=r.data["id"])
+        self.assertTrue(doc.ruta_externa.startswith(f"expedientes/{self.exp_propio.pk}/"))
+        self.assertEqual(bytes(doc.contenido), b"")
+        self.assertEqual(self.s3.objetos[("bucket-de-prueba", doc.ruta_externa)], b"%PDF externo")
+
+    def test_eliminar_borra_tambien_el_archivo_externo(self):
+        self.como(self.abogado)
+        doc = self.subir().data
+        self.assertEqual(len(self.s3.objetos), 1)
+        self.assertEqual(self.client.delete(self.url(doc=doc["id"])).status_code, 204)
+        self.assertEqual(self.s3.objetos, {})
+
+    def test_si_el_almacenamiento_falla_no_se_crea_el_documento(self):
+        self.como(self.abogado)
+        self.s3.falla = True
+        r = self.subir()
+        self.assertEqual(r.status_code, 502)
+        self.assertEqual(DocumentoExpediente.objects.count(), 0)
+
+    def test_si_falla_la_descarga_responde_502(self):
+        self.como(self.abogado)
+        doc = self.subir().data
+        self.s3.falla = True
+        self.assertEqual(self.client.get(self.url(doc=doc["id"])).status_code, 502)
+
+    def test_el_limite_sube_con_almacenamiento_externo(self):
+        self.assertEqual(DocumentoExpediente.limite(), DocumentoExpediente.TAMANO_MAXIMO_EXTERNO)
+        with override_settings(DOCUMENTOS_BUCKET=""):
+            self.assertEqual(DocumentoExpediente.limite(), DocumentoExpediente.TAMANO_MAXIMO)
+
+    def test_los_documentos_viejos_en_base_de_datos_se_siguen_descargando(self):
+        viejo = DocumentoExpediente.objects.create(
+            expediente=self.exp_propio, nombre="viejo.pdf", tamano=5, contenido=b"viejo", subido_por=self.abogado
+        )
+        self.como(self.abogado)
+        r = self.client.get(self.url(doc=viejo.pk))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.content, b"viejo")
+
+    def test_comando_mueve_los_documentos_de_la_base_de_datos_al_externo(self):
+        viejo = DocumentoExpediente.objects.create(
+            expediente=self.exp_propio, nombre="viejo.pdf", tamano=5, contenido=b"viejo", subido_por=self.abogado
+        )
+        salida = io.StringIO()
+        call_command("migrar_documentos_a_externo", "--simular", stdout=salida)
+        viejo.refresh_from_db()
+        self.assertEqual(viejo.ruta_externa, "")
+        call_command("migrar_documentos_a_externo", stdout=salida)
+        viejo.refresh_from_db()
+        self.assertTrue(viejo.ruta_externa)
+        self.assertEqual(bytes(viejo.contenido), b"")
+        self.assertEqual(viejo.leer_contenido(), b"viejo")
+        self.assertIn("Movidos: 1", salida.getvalue())
+
+    @override_settings(DOCUMENTOS_BUCKET="")
+    def test_comando_exige_configuracion(self):
+        from django.core.management.base import CommandError
+
+        with self.assertRaises(CommandError):
+            call_command("migrar_documentos_a_externo")
+
+
+class DocumentosSinConfiguracionTests(BaseApi):
+    def test_sin_bucket_todo_sigue_en_la_base_de_datos(self):
+        from expedientes import almacenamiento
+
+        self.assertFalse(almacenamiento.configurado())
+        self.assertEqual(DocumentoExpediente.limite(), DocumentoExpediente.TAMANO_MAXIMO)

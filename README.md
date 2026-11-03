@@ -15,7 +15,7 @@ El sistema ERP centraliza el flujo de trabajo de un despacho jurídico:
 - **Clientes**: base de datos de clientes del despacho, relacionada formalmente con expedientes y facturas.
 - **Facturación**: control de facturas emitidas, su estado y vencimiento.
 - **Notificaciones**: alertas internas generadas automáticamente (audiencias próximas, plazos próximos o vencidos, facturas vencidas), sin duplicados.
-- **Plazos procesales**: cálculo de fechas límite en días hábiles con los festivos de Colombia.
+- **Plazos procesales**: cálculo de fechas límite en días hábiles con los festivos de Colombia y, opcionalmente, descontando la vacancia judicial (Semana Santa y 20 de diciembre al 10 de enero).
 - **Documentos e historial**: archivos adjuntos por expediente y registro visible de quién cambió qué y cuándo.
 - **Menú desplegable con tres módulos**: Liquidación, Vigilancia judicial y Administración judicial.
 - **Liquidación**: laboral, créditos, alimentos y cuotas de administración, con detalle del cálculo, supuestos, impresión y registro de lo guardado.
@@ -110,7 +110,7 @@ Motor: **PostgreSQL 17**.
 - **Juzgado** — nombre, ciudad, materia.
 - **Expediente** — entidad central, con historial de auditoría (`django-simple-history`).
 - **EtapaProceso** — etapas del proceso judicial, relacionadas con un Expediente.
-- **DocumentoExpediente** — archivos adjuntos de un Expediente (máx. 5 MB, guardados en la base de datos).
+- **DocumentoExpediente** — archivos adjuntos de un Expediente (máx. 5 MB guardados en la base de datos; 25 MB si se configura almacenamiento externo compatible con S3).
 - **Audiencia** — audiencia o diligencia judicial (`tipo`, `clase`) relacionada con un Expediente.
 - **Cliente** — relacionado formalmente con Expediente y Factura.
 - **Factura** — relacionada opcionalmente con Expediente, y con Cliente.
@@ -441,7 +441,7 @@ Aplicación: `http://localhost:5173/`
 | `/api/notificaciones/` | GET, PATCH | Notificaciones del usuario |
 | `/api/dashboard/stats/` | GET | Estadísticas del panel |
 | `/api/perfil/` | GET, PATCH | Perfil del usuario autenticado |
-| `/api/plazos/calcular/?dias=N` | GET | Fecha límite en N días hábiles (festivos de Colombia) |
+| `/api/plazos/calcular/?dias=N[&vacancia=true]` | GET | Fecha límite en N días hábiles (festivos de Colombia; con `vacancia=true` descuenta la vacancia judicial) |
 | `/api/expedientes/{id}/historial/` | GET | Historial de cambios del expediente |
 | `/api/expedientes/{id}/documentos/` | GET, POST | Listar / adjuntar documentos |
 | `/api/expedientes/{id}/documento/{doc_id}/` | GET, DELETE | Descargar / eliminar documento |
@@ -466,7 +466,7 @@ Aplicación: `http://localhost:5173/`
 ## ⚖️ Reglas de negocio
 
 - **Radicado**: 23 dígitos (ciudad DANE 5 + corporación 2 + especialidad 2 + despacho 3 + año 4 + consecutivo 5 + recurso 2). Se rechaza cualquier otro formato.
-- **Plazos**: los días hábiles excluyen sábados, domingos y festivos de Colombia (Ley Emiliani y Semana Santa); el conteo inicia el día hábil siguiente. No considera vacancia judicial ni suspensiones de términos.
+- **Plazos**: los días hábiles excluyen sábados, domingos y festivos de Colombia (Ley Emiliani y Semana Santa); el conteo inicia el día hábil siguiente. La vacancia judicial (Semana Santa y del 20 de diciembre al 10 de enero, art. 146 de la Ley 270 de 1996) se descuenta solo si se activa `PLAZOS_CON_VACANCIA=true` o se envía `vacancia=true` al calcular; no considera suspensiones de términos decretadas por el Consejo Superior ni las actuaciones que no se suspenden en vacancia (p. ej. tutelas): confirme siempre el vencimiento.
 - **Notificaciones automáticas**: audiencias y plazos en los próximos 3 días, plazos vencidos y facturas vencidas o por vencer (estas últimas solo para administrador y socio director).
 - **Liquidaciones**: las tasas (interés bancario corriente, usura), el salario mínimo y el auxilio de transporte se digitan según la certificación vigente. Los abonos de un crédito se imputan primero a intereses y luego a capital. La liquidación laboral no incluye sanción moratoria, aportes ni retención.
 - **Alimentos**: la cuota se incrementa cada 1 de enero con el porcentaje digitado; el interés es opcional (tasa digitada); los abonos se restan del total. Verifique los valores con la sentencia o el acuerdo.
@@ -484,11 +484,22 @@ Aplicación: `http://localhost:5173/`
 
 ```bash
 python manage.py test                 # pruebas automatizadas del backend
+cd frontend && npm test               # pruebas automatizadas del frontend (Vitest + Testing Library)
 python manage.py cargar_demo          # carga casos de ejemplo (idempotente)
 python manage.py generar_notificaciones
 ```
 
-Variables opcionales: `CARGAR_DEMO=1` (carga la demo en el despliegue), `DEMO_PASSWORD` (crea usuarios demo de cada rol), `RESEND_API_KEY` y `DEFAULT_FROM_EMAIL` (envío real de correos), `FRONTEND_URL` (enlace de recuperación).
+Variables opcionales: `CARGAR_DEMO=1` (carga la demo en el despliegue), `DEMO_PASSWORD` (crea usuarios demo de cada rol), `RESEND_API_KEY` y `DEFAULT_FROM_EMAIL` (envío real de correos), `FRONTEND_URL` (enlace de recuperación), `PLAZOS_CON_VACANCIA` (`true` descuenta la vacancia judicial en todos los plazos) y las variables de almacenamiento externo de documentos (ver más abajo).
+
+### Almacenamiento externo de documentos (opcional)
+
+Por defecto los adjuntos se guardan en la base de datos (máx. 5 MB). Para guardarlos en un servicio compatible con S3 (Amazon S3, Cloudflare R2, Backblaze B2, Supabase Storage, MinIO) y subir el límite a 25 MB:
+
+1. `pip install boto3` y `pip freeze > requirements.txt`.
+2. Defina en Render: `DOCUMENTOS_BUCKET`, `DOCUMENTOS_ACCESS_KEY_ID`, `DOCUMENTOS_SECRET_ACCESS_KEY` y, según el proveedor, `DOCUMENTOS_ENDPOINT_URL` y `DOCUMENTOS_REGION`.
+3. Opcional: `python manage.py migrar_documentos_a_externo --simular` y luego sin `--simular` para pasar los documentos que ya estaban en la base de datos.
+
+Los documentos antiguos siguen descargándose aunque no se migren.
 
 ---
 
@@ -496,10 +507,14 @@ Variables opcionales: `CARGAR_DEMO=1` (carga la demo en el despliegue), `DEMO_PA
 
 | Rol | Alcance |
 |---|---|
-| `administrador` | Acceso total al sistema |
-| `socio_director` | Acceso total al sistema |
+| `administrador` | Acceso total al sistema. Es el único que crea y modifica usuarios |
+| `socio_director` | Acceso total al sistema; consulta los usuarios pero no los crea |
 | `abogado` | Solo sus expedientes asignados |
 | `secretario_juridico` | Solo expedientes asignados |
+| `escribiente` | Solo expedientes asignados |
+| `cliente` | Solo su perfil (cambio de contraseña y autorización de datos); sin acceso a los procesos por ahora |
+
+**Alta de usuarios:** el administrador crea la cuenta con una contraseña temporal y el sistema envía un correo de bienvenida. En su primer ingreso la persona debe cambiar la contraseña y autorizar el tratamiento de sus datos personales (Ley 1581 de 2012); hasta entonces el servidor rechaza cualquier otra petición.
 
 ---
 
@@ -538,9 +553,13 @@ La aplicación está desplegada en [Render](https://render.com) (plan gratuito) 
 - [x] Documentos adjuntos, historial visible, gestión de usuarios y recuperación de contraseña
 - [x] Pruebas automatizadas del backend
 - [x] Menú desplegable: Liquidación (laboral, créditos, alimentos, cuotas), Vigilancia judicial con enlaces y Administración judicial (A1, B1, citación, abogados, audiencias y diligencias)
-- [ ] Validación con usuarios del oficio (abogados / secretarios de juzgado)
-- [ ] Pruebas automatizadas del frontend
-- [ ] Almacenamiento externo de documentos y vacancia judicial en el cálculo de plazos
+- [x] Dashboard con totales, casos por rama y paneles desplegables; menú lateral plegable
+- [x] Clientes y abogados: alta desde el sistema y selección en A1 y B1
+- [x] Usuarios por rol creados solo por el administrador, correo de bienvenida y primer ingreso (cambio de contraseña y autorización de datos)
+- [x] Pruebas automatizadas del frontend (Vitest + Testing Library)
+- [x] Almacenamiento externo de documentos (opcional, compatible con S3)
+- [x] Vacancia judicial en el cálculo de plazos (opcional)
+- [ ] Validación con usuarios del oficio (abogados / secretarios de juzgado): guía y formatos listos en `docs/GUIA_VALIDACION_USUARIOS.md`
 
 ---
 

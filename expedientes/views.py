@@ -19,6 +19,7 @@ from core.permisos import EsDirectivo, es_directivo, expedientes_visibles, factu
 from facturacion.models import Factura
 
 from .historial import historial_de
+from . import almacenamiento
 from .models import DocumentoExpediente, EtapaProceso, Expediente, Juzgado
 from .serializers import (
     DocumentoExpedienteSerializer,
@@ -111,8 +112,8 @@ class ExpedienteViewSet(EliminarProtegidoMixin, viewsets.ModelViewSet):
             return Response({"detail": "Seleccione un archivo para subir."}, status=status.HTTP_400_BAD_REQUEST)
         if archivo.size == 0:
             return Response({"detail": "El archivo está vacío."}, status=status.HTTP_400_BAD_REQUEST)
-        if archivo.size > DocumentoExpediente.TAMANO_MAXIMO:
-            limite = DocumentoExpediente.TAMANO_MAXIMO // (1024 * 1024)
+        if archivo.size > DocumentoExpediente.limite():
+            limite = DocumentoExpediente.limite() // (1024 * 1024)
             return Response(
                 {"detail": f"El archivo supera el tamaño máximo permitido ({limite} MB)."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -126,14 +127,28 @@ class ExpedienteViewSet(EliminarProtegidoMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        doc = DocumentoExpediente.objects.create(
-            expediente=expediente,
-            nombre=nombre[:255],
-            tipo_contenido=(archivo.content_type or "")[:100],
-            tamano=archivo.size,
-            contenido=archivo.read(),
-            subido_por=request.user,
-        )
+        datos = archivo.read()
+        tipo = (archivo.content_type or "")[:100]
+        ruta_externa = ""
+        if almacenamiento.configurado():
+            try:
+                ruta_externa = almacenamiento.guardar(expediente.pk, nombre, datos, tipo)
+            except almacenamiento.ErrorAlmacenamiento as exc:
+                return Response({"detail": f"{exc} Intente de nuevo."}, status=status.HTTP_502_BAD_GATEWAY)
+        try:
+            doc = DocumentoExpediente.objects.create(
+                expediente=expediente,
+                nombre=nombre[:255],
+                tipo_contenido=tipo,
+                tamano=archivo.size,
+                contenido=b"" if ruta_externa else datos,
+                ruta_externa=ruta_externa,
+                subido_por=request.user,
+            )
+        except Exception:
+            if ruta_externa:
+                almacenamiento.borrar(ruta_externa)
+            raise
         return Response(DocumentoExpedienteSerializer(doc).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get", "delete"], url_path=r"documentos/(?P<doc_id>[0-9]+)")
@@ -154,7 +169,11 @@ class ExpedienteViewSet(EliminarProtegidoMixin, viewsets.ModelViewSet):
             doc.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-        respuesta = HttpResponse(bytes(doc.contenido), content_type="application/octet-stream")
+        try:
+            contenido = doc.leer_contenido()
+        except almacenamiento.ErrorAlmacenamiento as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+        respuesta = HttpResponse(contenido, content_type="application/octet-stream")
         respuesta["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(doc.nombre)}"
         respuesta["X-Content-Type-Options"] = "nosniff"
         return respuesta

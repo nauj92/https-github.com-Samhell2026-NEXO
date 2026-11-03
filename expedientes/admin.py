@@ -30,7 +30,7 @@ class EtapaProcesoAdmin(admin.ModelAdmin):
 
 @admin.register(DocumentoExpediente)
 class DocumentoExpedienteAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "expediente", "tamano", "subido_por", "subido_en")
+    list_display = ("nombre", "expediente", "tamano", "ruta_externa", "subido_por", "subido_en")
     search_fields = ("nombre", "expediente__numero")
-    readonly_fields = ("tamano", "subido_por", "subido_en")
+    readonly_fields = ("tamano", "ruta_externa", "subido_por", "subido_en")
     exclude = ("contenido",)

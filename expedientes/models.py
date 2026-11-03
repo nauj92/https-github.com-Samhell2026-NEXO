@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from simple_history.models import HistoricalRecords
 
 
@@ -85,19 +87,22 @@ class EtapaProceso(models.Model):
 class DocumentoExpediente(models.Model):
     """Documento adjunto a un expediente (demanda, auto, poder, etc.).
 
-    El contenido se guarda en la base de datos porque el disco de los servicios
-    gratuitos de Render no es persistente. Por eso hay un límite de tamaño
-    (ver TAMANO_MAXIMO) y no es adecuado para un archivo judicial voluminoso.
+    Por defecto el contenido se guarda en la base de datos porque el disco de los servicios
+    gratuitos de Render no es persistente; por eso hay un límite de tamaño (TAMANO_MAXIMO).
+    Si hay almacenamiento externo configurado (ver almacenamiento.py), los archivos nuevos van
+    allí (`ruta_externa`) y el límite sube a TAMANO_MAXIMO_EXTERNO.
     """
 
-    TAMANO_MAXIMO = 5 * 1024 * 1024  # 5 MB
+    TAMANO_MAXIMO = 5 * 1024 * 1024  # 5 MB, guardados en la base de datos
+    TAMANO_MAXIMO_EXTERNO = 25 * 1024 * 1024  # 25 MB, con almacenamiento externo
     EXTENSIONES_PERMITIDAS = ("pdf", "doc", "docx", "xls", "xlsx", "jpg", "jpeg", "png", "txt")
 
     expediente = models.ForeignKey(Expediente, on_delete=models.CASCADE, related_name="documentos")
     nombre = models.CharField(max_length=255)
     tipo_contenido = models.CharField(max_length=100, blank=True)
     tamano = models.PositiveIntegerField()
-    contenido = models.BinaryField()
+    contenido = models.BinaryField(blank=True, default=b"")
+    ruta_externa = models.CharField(max_length=500, blank=True, default="", help_text="Ruta del archivo en el almacenamiento externo")
     subido_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="documentos_subidos"
     )
@@ -106,7 +111,31 @@ class DocumentoExpediente(models.Model):
     def __str__(self):
         return f"{self.expediente.numero} - {self.nombre}"
 
+    @classmethod
+    def limite(cls):
+        """Tamaño máximo vigente: mayor si hay almacenamiento externo."""
+        from . import almacenamiento
+
+        return cls.TAMANO_MAXIMO_EXTERNO if almacenamiento.configurado() else cls.TAMANO_MAXIMO
+
+    def leer_contenido(self):
+        """Bytes del archivo, vengan de la base de datos o del almacenamiento externo."""
+        if self.ruta_externa:
+            from . import almacenamiento
+
+            return almacenamiento.leer(self.ruta_externa)
+        return bytes(self.contenido)
+
     class Meta:
         verbose_name = "Documento del expediente"
         verbose_name_plural = "Documentos del expediente"
         ordering = ["-subido_en"]
+
+
+@receiver(post_delete, sender=DocumentoExpediente)
+def _borrar_archivo_externo(sender, instance, **kwargs):
+    """Al eliminar el documento se elimina también su archivo del almacenamiento externo."""
+    if instance.ruta_externa:
+        from . import almacenamiento
+
+        almacenamiento.borrar(instance.ruta_externa)
