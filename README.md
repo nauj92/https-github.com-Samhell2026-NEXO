@@ -17,7 +17,7 @@ El sistema ERP centraliza el flujo de trabajo de un despacho jurídico:
 - **Facturación**: control de facturas emitidas, su estado y vencimiento.
 - **Notificaciones**: alertas internas generadas automáticamente (audiencias próximas, plazos próximos o vencidos, facturas vencidas), sin duplicados.
 - **Plazos procesales**: cálculo de fechas límite en días hábiles con los festivos de Colombia y, opcionalmente, descontando la vacancia judicial (Semana Santa y 20 de diciembre al 10 de enero).
-- **Documentos e historial**: archivos adjuntos por expediente y registro visible de quién cambió qué y cuándo.
+- **Documentos e historial**: archivos adjuntos por expediente y registro visible de quién cambió qué y cuándo: cambios del expediente, documentos adjuntados o eliminados, etapas agregadas, modificadas o eliminadas y movimientos de los acuerdos de pago.
 - **Menú desplegable con tres módulos**: Liquidación, Vigilancia judicial y Administración judicial.
 - **Liquidación**: laboral, créditos, alimentos y cuotas de administración, con detalle del cálculo, supuestos, impresión y registro de lo guardado.
 - **Vigilancia judicial**: seguimiento interno de procesos con enlaces anclados por proceso (consulta de procesos, estados, expediente digital), registro de actuaciones y alerta cuando pasan días sin movimiento.
@@ -55,12 +55,13 @@ El sistema separa dos capas independientes, comunicadas mediante una API REST:
 | Tecnología | Uso |
 |---|---|
 | **JavaScript (JSX)** | Lenguaje principal del frontend |
-| **React 18** | Librería de interfaz de usuario |
-| **Vite** | Herramienta de construcción y servidor de desarrollo |
+| **React 19** | Librería de interfaz de usuario |
+| **Vite 8** | Herramienta de construcción y servidor de desarrollo |
 | **React Router DOM** | Enrutamiento entre pantallas |
 | **Axios** | Cliente HTTP para consumir la API |
 | **Recharts** | Gráficos de estadísticas (panel de control) |
 | **lucide-react** | Librería de íconos |
+| **Vitest + Testing Library** | Pruebas automatizadas del frontend |
 
 ### Herramientas de desarrollo
 - **Git / GitHub** — control de versiones
@@ -71,6 +72,42 @@ El sistema separa dos capas independientes, comunicadas mediante una API REST:
 
 ## 🧱 Arquitectura y estructura del proyecto
 
+### Estilo de arquitectura
+
+El sistema usa una **arquitectura cliente-servidor desacoplada en tres capas físicas**: una aplicación de una sola página (SPA) en el navegador, una **API REST sin estado** y una base de datos relacional. La autenticación es por tokens JWT, por lo que el servidor no guarda sesiones.
+
+```mermaid
+flowchart LR
+    U[Usuario en el navegador] --> F[Frontend: SPA React + Vite]
+    F -- "HTTPS · JSON · JWT" --> A[Backend: API REST Django + DRF]
+    A --> D[(PostgreSQL)]
+    A -. "opcional" .-> S[(Almacenamiento S3 compatible)]
+    A -. "correo" .-> R[Resend]
+```
+
+**Backend: monolito modular.** Es una sola aplicación Django dividida en módulos por dominio (`expedientes`, `audiencias`, `acuerdos`, `clientes`, `demandas`, `liquidaciones`, `vigilancia`, `notificaciones`, `usuarios`, etc.). Cada módulo sigue la misma estructura en capas, adaptación del patrón MTV de Django a una API:
+
+| Capa | Archivo | Responsabilidad |
+|---|---|---|
+| Modelo | `models.py` | Entidades, relaciones y persistencia con el ORM |
+| Serializador | `serializers.py` | Validación de datos y reglas de negocio de entrada |
+| Controlador | `views.py` | ViewSets de DRF: reciben la petición, aplican el alcance por rol y responden |
+| Rutas | `urls.py` | Registro de los endpoints en un router |
+
+El módulo `core` agrupa lo transversal: permisos por rol, el alcance de datos de cada usuario (`expedientes_visibles`), el cálculo de plazos en días hábiles, el resumen del Dashboard y los datos de demostración.
+
+**Decisiones de diseño**
+
+- **Las reglas y los permisos viven en el servidor.** El frontend solo presenta; aunque se alterara, la API rechaza lo que el rol no permite.
+- **Alcance por rol:** administrador y socio director ven todo; abogados, secretarios y escribientes, solo sus expedientes; el rol cliente solo su perfil.
+- **Trazabilidad:** historial automático de los campos del expediente (`django-simple-history`) y registro de eventos propios para documentos, etapas y acuerdos de pago (`EventoExpediente`).
+- **Almacenamiento intercambiable:** los documentos van a la base de datos por defecto o a un servicio compatible con S3 si se configura, sin cambiar el resto del código.
+- **Frontend por pantallas:** `pages/` (una por módulo), `components/` compartidos (menú, diálogos, estilos), `utils/` (formatos y mensajes de error) y `api.js` (cliente HTTP que añade el token y lo renueva).
+- **Despliegue continuo:** tres servicios en Render (API, sitio estático y PostgreSQL); cada subida a `main` despliega automáticamente.
+
+### Estructura de carpetas
+
+```text
 erp-operador-judicial/
 ├── config/ # Configuración del proyecto Django
 │ ├── settings/
@@ -98,6 +135,7 @@ erp-operador-judicial/
 ├── requirements.txt # Dependencias de Python
 ├── manage.py
 └── .env # Variables de entorno (NO se sube al repositorio)
+```
 
 
 ---
@@ -114,6 +152,9 @@ Motor: **PostgreSQL 17**.
 - **EtapaProceso** — etapas del proceso judicial, relacionadas con un Expediente.
 - **DocumentoExpediente** — archivos adjuntos de un Expediente (máx. 5 MB guardados en la base de datos; 25 MB si se configura almacenamiento externo compatible con S3).
 - **Audiencia** — audiencia o diligencia judicial (`tipo`, `clase`) relacionada con un Expediente.
+- **EventoExpediente** — registro del historial del expediente para documentos, etapas y acuerdos de pago (tipo, cambios en JSON, usuario y fecha). Se conserva aunque se elimine lo registrado.
+- **AcuerdoPago** — acuerdo de pago de un Expediente (deudor, concepto, valor total, fecha, estado vigente o cancelado).
+- **CuotaAcuerdo** — cuota de un acuerdo (número, valor, vencimiento y fecha de pago); de ellas se calculan el saldo y la mora.
 - **Cliente** — relacionado formalmente con Expediente y Factura.
 - **Factura** — relacionada opcionalmente con Expediente, y con Cliente.
 - **Notificacion** — relacionada con Usuario; el campo `clave` evita duplicados.
@@ -136,6 +177,9 @@ erDiagram
     CLIENTE ||--o{ FACTURA : "factura"
     EXPEDIENTE ||--o{ ETAPAPROCESO : "contiene"
     EXPEDIENTE ||--o{ AUDIENCIA : "tiene"
+    EXPEDIENTE ||--o{ EVENTOEXPEDIENTE : "registra"
+    EXPEDIENTE ||--o{ ACUERDOPAGO : "pacta"
+    ACUERDOPAGO ||--o{ CUOTAACUERDO : "se paga en"
     EXPEDIENTE ||--o{ FACTURA : "genera"
     EXPEDIENTE ||--o{ DOCUMENTOEXPEDIENTE : "adjunta"
     EXPEDIENTE ||--o| VIGILANCIA : "se vigila"
@@ -423,7 +467,7 @@ Aplicación: `http://localhost:5173/`
 - Autenticación por **JWT**, con renovación automática de token en el frontend.
 - **django-axes**: bloqueo de cuentas tras intentos fallidos de inicio de sesión (por usuario e IP).
 - **django-simple-history**: auditoría de cambios sobre `Expediente`, visible en la pantalla del expediente.
-- **Permisos por rol**: `abogado` y `secretario_juridico` solo ven sus expedientes asignados; `administrador` y `socio_director` ven todos.
+- **Permisos por rol**: `abogado`, `secretario_juridico` y `escribiente` solo ven sus expedientes asignados; `administrador` y `socio_director` ven todos.
 - **Recuperación de contraseña** con enlace de un solo uso y vigencia de 1 hora; no revela si el correo existe y está limitada a 30 solicitudes por hora.
 - Variables sensibles fuera del control de versiones (`.env`, `.gitignore`).
 
@@ -443,11 +487,13 @@ Aplicación: `http://localhost:5173/`
 | `/api/facturas/` | GET, POST, PATCH, DELETE | CRUD de facturas |
 | `/api/notificaciones/` | GET, PATCH | Notificaciones del usuario |
 | `/api/dashboard/stats/` | GET | Estadísticas del panel |
+| `/api/dashboard/resumen/` | GET | Resumen del Dashboard según el rol (totales, casos por rama, plazos, audiencias, acuerdos de pago) |
+| `/api/etapas/` | GET, POST, PATCH, DELETE | Etapas del proceso (cada cambio queda en el historial del expediente) |
 | `/api/perfil/` | GET, PATCH | Perfil del usuario autenticado |
 | `/api/plazos/calcular/?dias=N[&vacancia=true]` | GET | Fecha límite en N días hábiles (festivos de Colombia; con `vacancia=true` descuenta la vacancia judicial) |
 | `/api/expedientes/{id}/historial/` | GET | Historial de cambios del expediente |
 | `/api/expedientes/{id}/documentos/` | GET, POST | Listar / adjuntar documentos |
-| `/api/expedientes/{id}/documento/{doc_id}/` | GET, DELETE | Descargar / eliminar documento |
+| `/api/expedientes/{id}/documentos/{doc_id}/` | GET, DELETE | Descargar / eliminar documento |
 | `/api/gestion-usuarios/` | GET, POST, PATCH | Gestión de usuarios (administrador y socio director) |
 | `/api/gestion-usuarios/{id}/desbloquear/` | POST | Reinicia el bloqueo por intentos fallidos |
 | `/api/liquidaciones/calcular/` | POST | Calcula una liquidación (laboral, credito, alimentos o cuotas) sin guardar |
@@ -562,6 +608,9 @@ La aplicación está desplegada en [Render](https://render.com) (plan gratuito) 
 - [x] Pruebas automatizadas del frontend (Vitest + Testing Library)
 - [x] Almacenamiento externo de documentos (opcional, compatible con S3)
 - [x] Vacancia judicial en el cálculo de plazos (opcional)
+- [x] Historial de cambios completo: documentos, etapas y acuerdos de pago, además de los campos del expediente
+- [x] Acuerdos de pago con cuotas, saldo, mora, y presencia en el Dashboard y en el historial
+- [x] Dashboard con fecha y hora en vivo
 - [ ] Validación con usuarios del oficio (abogados / secretarios de juzgado): guía y formatos listos en `docs/GUIA_VALIDACION_USUARIOS.md`
 
 ---
