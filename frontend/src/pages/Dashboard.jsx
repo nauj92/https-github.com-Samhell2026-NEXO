@@ -81,6 +81,23 @@ const Vence = ({ dias }) => (
   </span>
 );
 
+// Fecha y hora actuales, que se actualizan solas cada segundo.
+function FechaHora() {
+  const [ahora, setAhora] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setAhora(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const dia = ahora.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const hora = ahora.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", second: "2-digit" });
+  return (
+    <div style={{ textAlign: "right" }}>
+      <div style={{ fontSize: "14px", fontWeight: 600 }}>{dia.charAt(0).toUpperCase() + dia.slice(1)}</div>
+      <div style={{ fontSize: "20px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{hora}</div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [datos, setDatos] = useState(null);
   const [error, setError] = useState("");
@@ -113,7 +130,7 @@ export default function Dashboard() {
             <div style={{ fontSize: "20px", fontWeight: 700 }}>Resumen del despacho</div>
             <div style={{ fontSize: "13px", opacity: 0.85 }}>Lo que necesita su atención, según su rol</div>
           </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, textTransform: "capitalize" }}>{new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
+          <FechaHora />
         </div>
         {error && <div style={{ color: "#c73a3a", marginBottom: "12px" }}>{error}</div>}
         {!d && !error && <div style={{ color: "#6b7f96" }}>Cargando…</div>}
