@@ -73,8 +73,11 @@ html[data-tema="oscuro"] { filter: invert(1) hue-rotate(180deg); background: #ff
 html[data-tema="oscuro"] .menu-lateral,
 html[data-tema="oscuro"] .barra-movil,
 html[data-tema="oscuro"] .fondo-login,
+html[data-tema="oscuro"] .banner-resumen,
 html[data-tema="oscuro"] img,
 html[data-tema="oscuro"] video { filter: invert(1) hue-rotate(180deg); }
+
+html[data-tema="oscuro"] .menu-lateral { scrollbar-width: thin; scrollbar-color: #4a77a8 #1d3f66; }
 
 /* Impresión: solo el contenido */
 @media print {

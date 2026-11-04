@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Scale, User, Lock } from "lucide-react";
+import BotonTema from "../components/BotonTema";
 import api from "../api";
 import { mensajeError } from "../utils/errores";
 
@@ -70,17 +71,23 @@ export default function Login() {
         alignItems: "center",
         justifyContent: "center",
         position: "relative",
-        backgroundImage: `url(${imagenFondo})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
+        backgroundColor: "#0a1a2b",
       }}
     >
       <div
+        className="fondo-login"
         style={{
           position: "absolute",
           inset: 0,
-          background: "linear-gradient(135deg, rgba(10,26,43,0.85), rgba(10,26,43,0.6))",
+          backgroundImage: `linear-gradient(135deg, rgba(10,26,43,0.85), rgba(10,26,43,0.6)), url(${imagenFondo})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
         }}
+      />
+      <BotonTema
+        etiqueta
+        className="fondo-login"
+        estilo={{ position: "absolute", top: "16px", right: "16px", zIndex: 2, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.4)", color: "white", padding: "8px 14px", borderRadius: "30px", fontSize: "13px", fontFamily: "inherit" }}
       />
 
       <form
@@ -98,7 +105,7 @@ export default function Login() {
       >
         <h2 style={{ marginBottom: "28px", color: "#0a1a2b", display: "flex", alignItems: "center", gap: "10px" }}>
           <Scale size={26} color="#d4a743" />
-          ·ERP
+          ACOPROHO
         </h2>
 
         {error && (

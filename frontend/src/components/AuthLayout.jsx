@@ -27,7 +27,7 @@ export default function AuthLayout({ titulo, children, ancho = 380 }) {
         style={{
           position: "absolute",
           inset: 0,
-          backgroundImage: `url(${imagenFondo})`,
+          backgroundImage: `linear-gradient(135deg, rgba(10,26,43,0.85), rgba(10,26,43,0.6)), url(${imagenFondo})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
@@ -36,14 +36,6 @@ export default function AuthLayout({ titulo, children, ancho = 380 }) {
         etiqueta
         className="fondo-login"
         estilo={{ position: "absolute", top: "16px", right: "16px", zIndex: 2, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.4)", color: "white", padding: "8px 14px", borderRadius: "30px", fontSize: "13px", fontFamily: "inherit" }}
-      />
-      <div
-        className="fondo-login"
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "linear-gradient(135deg, rgba(10,26,43,0.85), rgba(10,26,43,0.6))",
-        }}
       />
       <div
         style={{

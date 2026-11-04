@@ -125,7 +125,7 @@ export default function Dashboard() {
       <Encabezado Icono={LayoutDashboard} titulo="Dashboard" />
       <div style={{ padding: "24px 32px", background: "linear-gradient(180deg, #e8f0f9 0%, #f3f6fa 320px)", minHeight: "calc(100vh - 64px)" }}>
         <div style={{ maxWidth: "1100px" }}>
-        <div style={{ background: "linear-gradient(120deg, #1d3f66 0%, #3b6ea5 100%)", color: "white", borderRadius: "16px", padding: "20px 24px", marginBottom: "20px", display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "center", borderBottom: "4px solid #d4a743" }}>
+        <div className="banner-resumen" style={{ background: "linear-gradient(120deg, #1d3f66 0%, #3b6ea5 100%)", color: "white", borderRadius: "16px", padding: "20px 24px", marginBottom: "20px", display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "center", borderBottom: "4px solid #d4a743" }}>
           <div>
             <div style={{ fontSize: "20px", fontWeight: 700 }}>Resumen del despacho</div>
             <div style={{ fontSize: "13px", opacity: 0.85 }}>Lo que necesita su atención, según su rol</div>
