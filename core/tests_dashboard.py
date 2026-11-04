@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 
 from django.utils import timezone
 from rest_framework.test import APITestCase
@@ -110,3 +111,52 @@ class DashboardResumenTests(APITestCase):
         j = Juzgado.objects.create(nombre="Juzgado X", especialidad="FAMILIA ORALIDAD")
         e = crear_expediente(self.abogado, materia="Asunto 123", juzgado=j)
         self.assertEqual(rama_de(e), "Familia")
+
+
+class DashboardAcuerdosTests(APITestCase):
+    def setUp(self):
+        from acuerdos.models import AcuerdoPago, CuotaAcuerdo
+
+        self.admin = crear_usuario("admin1", "administrador")
+        self.abogado = crear_usuario("abog1", "abogado")
+        self.otro = crear_usuario("abog2", "abogado")
+        self.hoy = timezone.localdate()
+        self.exp = crear_expediente(self.abogado)
+        self.exp_ajeno = crear_expediente(self.otro)
+
+        def acuerdo(exp, concepto, cuotas):
+            a = AcuerdoPago.objects.create(
+                expediente=exp, deudor="Deudor", concepto=concepto, valor_total=sum(v for v, _, _ in cuotas),
+                fecha_acuerdo=self.hoy - timedelta(days=60),
+            )
+            for i, (valor, dias, pagada) in enumerate(cuotas, 1):
+                CuotaAcuerdo.objects.create(
+                    acuerdo=a, numero=i, valor=valor, fecha_vencimiento=self.hoy + timedelta(days=dias),
+                    fecha_pago=self.hoy if pagada else None,
+                )
+            return a
+
+        acuerdo(self.exp, "En mora", [(100, -10, False), (100, 20, False)])
+        acuerdo(self.exp, "Cumplido", [(50, -5, True)])
+        acuerdo(self.exp, "Al día", [(70, 40, False)])
+        acuerdo(self.exp_ajeno, "Ajeno", [(900, -1, False)])
+        cancelado = acuerdo(self.exp, "Cancelado", [(10, -3, False)])
+        cancelado.estado = "cancelado"
+        cancelado.save()
+
+    def test_resumen_para_el_abogado(self):
+        self.client.force_authenticate(self.abogado)
+        d = self.client.get(URL).data
+        a = d["acuerdos_pago"]
+        self.assertEqual(d["totales"]["acuerdos"], 4)
+        self.assertEqual((a["vigentes"], a["en_mora"], a["cumplidos"]), (1, 1, 1))
+        # saldo de los acuerdos activos: 200 (mora) + 0 (cumplido) + 70 (al día)
+        self.assertEqual(Decimal(a["saldo_pendiente"]), Decimal("270"))
+        self.assertEqual([c["titulo"] for c in a["cuotas_por_atender"]], ["En mora · cuota 1"])
+        self.assertEqual(a["cuotas_por_atender"][0]["dias"], -10)
+
+    def test_el_directivo_ve_todos(self):
+        self.client.force_authenticate(self.admin)
+        d = self.client.get(URL).data
+        self.assertEqual(d["totales"]["acuerdos"], 5)
+        self.assertEqual(d["acuerdos_pago"]["en_mora"], 2)

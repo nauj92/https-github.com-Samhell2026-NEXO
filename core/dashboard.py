@@ -1,6 +1,7 @@
 """Resumen para el tablero (dashboard): lo que el usuario debe atender, respetando su rol."""
 import unicodedata
 from datetime import timedelta
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
@@ -8,6 +9,7 @@ from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from acuerdos.models import AcuerdoPago
 from audiencias.models import Audiencia
 from clientes.models import Cliente
 from core.permisos import es_directivo, expedientes_visibles
@@ -134,6 +136,38 @@ class DashboardResumenView(APIView):
             por_rama[r] = por_rama.get(r, 0) + 1
         casos_por_rama = sorted(({"rama": k, "total": v} for k, v in por_rama.items()), key=lambda x: -x["total"])
 
+        # Acuerdos de pago: vigentes, en mora, saldo por cobrar y cuotas vencidas o próximas (7 días)
+        acuerdos = list(
+            AcuerdoPago.objects.filter(expediente__in=expedientes)
+            .select_related("expediente")
+            .prefetch_related("cuotas")
+        )
+        activos = [a for a in acuerdos if a.estado == AcuerdoPago.Estado.VIGENTE]
+        cuotas_atender = []
+        for a in activos:
+            for c in a.cuotas.all():
+                if not c.fecha_pago and c.fecha_vencimiento <= hoy + timedelta(days=7):
+                    cuotas_atender.append(
+                        {
+                            "id": c.id,
+                            "titulo": f"{a.concepto} · cuota {c.numero}",
+                            "referencia": f"{a.deudor} · expediente {a.expediente.numero}",
+                            "fecha_limite": c.fecha_vencimiento.isoformat(),
+                            "dias": (c.fecha_vencimiento - hoy).days,
+                            "valor": str(c.valor),
+                        }
+                    )
+        cuotas_atender.sort(key=lambda x: x["fecha_limite"])
+        acuerdos_resumen = {
+            "total": len(acuerdos),
+            "vigentes": sum(1 for a in activos if a.estado_actual(hoy) == "vigente"),
+            "en_mora": sum(1 for a in activos if a.estado_actual(hoy) == "en_mora"),
+            "cumplidos": sum(1 for a in activos if a.estado_actual(hoy) == "cumplido"),
+            "saldo_pendiente": str(sum((a.saldo() for a in activos), Decimal("0"))),
+            "cuotas_por_atender": cuotas_atender[:MAX_ITEMS],
+            "cuotas_por_atender_total": len(cuotas_atender),
+        }
+
         todas_audiencias = Audiencia.objects.filter(expediente__in=expedientes)
         totales = {
             "demandas": demandas.count(),
@@ -142,6 +176,7 @@ class DashboardResumenView(APIView):
             "audiencias": todas_audiencias.filter(tipo=Audiencia.Tipo.AUDIENCIA).count(),
             "diligencias": todas_audiencias.filter(tipo=Audiencia.Tipo.DILIGENCIA).count(),
             "expedientes": expedientes.count(),
+            "acuerdos": len(acuerdos),
         }
 
         resumen = {
@@ -163,6 +198,7 @@ class DashboardResumenView(APIView):
             "contestaciones_pendientes_total": len(contestaciones),
             "contestaciones_vencidas": contestaciones_vencidas,
             "clientes_total": Cliente.objects.count(),
+            "acuerdos_pago": acuerdos_resumen,
         }
         if directivo:
             resumen["abogados_total"] = get_user_model().objects.filter(is_active=True).count()

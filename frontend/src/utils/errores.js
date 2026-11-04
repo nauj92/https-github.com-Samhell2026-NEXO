@@ -27,6 +27,14 @@ const ETIQUETAS = {
   password_nueva: "Contraseña nueva",
   password_actual: "Contraseña actual",
   archivo: "Archivo",
+  deudor: "Deudor",
+  concepto: "Concepto",
+  valor_total: "Valor total",
+  fecha_acuerdo: "Fecha del acuerdo",
+  num_cuotas: "Número de cuotas",
+  fecha_primera_cuota: "Primera cuota",
+  fecha_pago: "Fecha de pago",
+  cuota: "Cuota",
   non_field_errors: "",
 };
 

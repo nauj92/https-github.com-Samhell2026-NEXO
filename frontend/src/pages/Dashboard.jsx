@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { LayoutDashboard, ChevronDown, ChevronRight, FileText, FileSignature, CalendarDays, Briefcase, Users, Contact, Gavel } from "lucide-react";
+import { LayoutDashboard, ChevronDown, ChevronRight, FileText, FileSignature, CalendarDays, Briefcase, Users, Contact, Gavel, Wallet } from "lucide-react";
 import api from "../api";
 import Layout from "../components/Layout";
 import { mensajeError } from "../utils/errores";
 import { Encabezado } from "../components/ui";
+import { pesos } from "../utils/formato";
 
 const CLAVE = "dashboard_paneles";
 const ESTADOS_DEMANDA = {
@@ -124,6 +125,7 @@ export default function Dashboard() {
               <Tarjeta titulo="Clientes" valor={d.totales.clientes} Icono={Contact} color="#2a8fa6" />
               {d.es_directivo && <Tarjeta titulo="Abogados" valor={d.totales.abogados} Icono={Users} color="#d4a743" />}
               <Tarjeta titulo="Audiencias" valor={d.totales.audiencias} Icono={CalendarDays} color="#2e8b6e" />
+              <Tarjeta titulo="Acuerdos de pago" valor={d.totales.acuerdos} Icono={Wallet} alerta={d.acuerdos_pago.en_mora > 0} color="#8a7a2b" />
               <Tarjeta titulo="Diligencias judiciales" valor={d.totales.diligencias} Icono={Gavel} color="#d9822b" />
               <Tarjeta titulo="Expedientes (casos)" valor={d.totales.expedientes} Icono={Briefcase} color="#c0504d" />
             </div>
@@ -183,6 +185,21 @@ export default function Dashboard() {
                 )}
               />
               <Link to="/audiencias" style={{ fontSize: "13px", fontWeight: 600 }}>Ir a audiencias</Link>
+            </Panel>
+
+            <Panel color="#8a7a2b" id="acuerdos" titulo="Acuerdos de pago" resumen={`${d.acuerdos_pago.vigentes + d.acuerdos_pago.en_mora} activo(s)${d.acuerdos_pago.en_mora ? ` · ${d.acuerdos_pago.en_mora} en mora` : ""}`} abierto={abierto("acuerdos")} alternar={alternar}>
+              <div style={{ fontSize: "14px", marginBottom: "8px" }}>Saldo por cobrar: <strong>{pesos(d.acuerdos_pago.saldo_pendiente)}</strong> · Cumplidos: <strong>{d.acuerdos_pago.cumplidos}</strong></div>
+              <Lista
+                items={d.acuerdos_pago.cuotas_por_atender}
+                vacio="No hay cuotas vencidas ni por vencer en los próximos 7 días."
+                render={(c) => (
+                  <>
+                    <span><strong>{c.titulo}</strong><br /><span style={{ color: "#6b7f96" }}>{c.referencia} · {fechaCorta(c.fecha_limite)} · {pesos(c.valor)}</span></span>
+                    <Vence dias={c.dias} />
+                  </>
+                )}
+              />
+              <Link to="/acuerdos" style={{ fontSize: "13px", fontWeight: 600 }}>Ir a acuerdos de pago</Link>
             </Panel>
 
             <Panel color="#d4a743" id="demandas" titulo="Demandas por estado" resumen={`${d.demandas_total} en total`} abierto={abierto("demandas")} alternar={alternar}>

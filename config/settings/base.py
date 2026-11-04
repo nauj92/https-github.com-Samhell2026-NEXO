@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "clientes",
     "expedientes",
     "audiencias",
+    "acuerdos",
     "facturacion",
     "notificaciones",
     "liquidaciones",

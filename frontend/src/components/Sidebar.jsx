@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Scale, LogOut, Gavel, Calculator, Eye, FileText, ChevronDown, ChevronRight, Briefcase, Bell,
-  FileSignature, Send, Users, CalendarDays, Contact, LayoutDashboard, ChevronsLeft, ChevronsRight,
+  FileSignature, Send, Users, CalendarDays, Contact, LayoutDashboard, Wallet, ChevronsLeft, ChevronsRight,
 } from "lucide-react";
 import api from "../api";
 
@@ -33,6 +33,7 @@ const menu = [
       { to: "/clientes", label: "Clientes", Icon: Contact },
       { to: "/abogados", label: "Abogados y usuarios", Icon: Users },
       { to: "/audiencias", label: "Audiencias y diligencias judiciales", Icon: CalendarDays },
+      { to: "/acuerdos", label: "Acuerdos de pago", Icon: Wallet },
     ],
   },
 ];

@@ -12,6 +12,7 @@ El sistema ERP centraliza el flujo de trabajo de un despacho jurídico:
 
 - **Expedientes**: registro y seguimiento de casos judiciales, con etapas del proceso (línea de tiempo).
 - **Audiencias**: agenda de audiencias vinculadas a cada expediente.
+- **Acuerdos de pago**: acuerdos pactados en un proceso, repartidos en cuotas mensuales; se registra el pago de cada cuota, se calcula el saldo y se marca la mora. Aparecen en el Dashboard y cada movimiento queda en el historial del expediente.
 - **Clientes**: base de datos de clientes del despacho, relacionada formalmente con expedientes y facturas.
 - **Facturación**: control de facturas emitidas, su estado y vencimiento.
 - **Notificaciones**: alertas internas generadas automáticamente (audiencias próximas, plazos próximos o vencidos, facturas vencidas), sin duplicados.
@@ -80,6 +81,7 @@ erp-operador-judicial/
 ├── usuarios/ # Modelo de usuario personalizado, con roles
 ├── expedientes/ # Expedientes, Juzgados, Etapas del proceso
 ├── audiencias/ # Audiencias judiciales
+├── acuerdos/ # Acuerdos de pago y sus cuotas
 ├── clientes/ # Clientes del despacho
 ├── facturacion/ # Facturas
 ├── notificaciones/ # Notificaciones internas
@@ -436,6 +438,7 @@ Aplicación: `http://localhost:5173/`
 | `/api/expedientes/` | GET, POST | Listar / crear expedientes |
 | `/api/expedientes/{id}/` | GET, PATCH, DELETE | Detalle / editar / eliminar |
 | `/api/audiencias/` | GET, POST, PATCH, DELETE | CRUD de audiencias |
+| `/api/acuerdos-pago/` | GET, POST, PATCH, DELETE | Acuerdos de pago con cuotas (`?expediente=`); `POST /{id}/pagar/` y `POST /{id}/reabrir/` con `{cuota}` |
 | `/api/clientes/` | GET, POST, PATCH, DELETE | CRUD de clientes |
 | `/api/facturas/` | GET, POST, PATCH, DELETE | CRUD de facturas |
 | `/api/notificaciones/` | GET, PATCH | Notificaciones del usuario |
