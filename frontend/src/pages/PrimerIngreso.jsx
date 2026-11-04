@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../api";
 import { mensajeError } from "../utils/errores";
 import AuthLayout, { Aviso, estiloInput, estiloBoton } from "../components/AuthLayout";
+import CampoClave from "../components/CampoClave";
 
 // Texto de la autorización (Ley 1581 de 2012 y Decreto 1377 de 2013, Colombia).
 // El despacho debe revisarlo con su asesor jurídico y ajustarlo a su política de tratamiento de datos.
@@ -93,11 +94,11 @@ export default function PrimerIngreso() {
             Hola {perfil.first_name || perfil.username}. Ingresó con una contraseña temporal; defina una propia para continuar.
           </p>
           <label style={etiqueta}>Contraseña temporal (la del correo)</label>
-          <input style={{ ...estiloInput, marginTop: "6px" }} type="password" value={f.actual} onChange={(e) => setF({ ...f, actual: e.target.value })} autoComplete="current-password" />
+          <CampoClave style={{ ...estiloInput, marginTop: "6px" }} value={f.actual} onChange={(e) => setF({ ...f, actual: e.target.value })} autoComplete="current-password" />
           <label style={etiqueta}>Contraseña nueva</label>
-          <input style={{ ...estiloInput, marginTop: "6px" }} type="password" value={f.nueva} onChange={(e) => setF({ ...f, nueva: e.target.value })} autoComplete="new-password" />
+          <CampoClave style={{ ...estiloInput, marginTop: "6px" }} value={f.nueva} onChange={(e) => setF({ ...f, nueva: e.target.value })} autoComplete="new-password" />
           <label style={etiqueta}>Repetir contraseña nueva</label>
-          <input style={{ ...estiloInput, marginTop: "6px" }} type="password" value={f.repetir} onChange={(e) => setF({ ...f, repetir: e.target.value })} autoComplete="new-password" />
+          <CampoClave style={{ ...estiloInput, marginTop: "6px" }} value={f.repetir} onChange={(e) => setF({ ...f, repetir: e.target.value })} autoComplete="new-password" />
           <button type="submit" disabled={enviando} style={{ ...estiloBoton, opacity: enviando ? 0.7 : 1 }}>
             {enviando ? "Guardando..." : "Guardar y continuar"}
           </button>

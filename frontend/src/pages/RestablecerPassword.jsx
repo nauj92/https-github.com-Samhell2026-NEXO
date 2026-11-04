@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import api from "../api";
 import { mensajeError } from "../utils/errores";
 import AuthLayout, { Aviso, estiloInput, estiloBoton } from "../components/AuthLayout";
+import CampoClave from "../components/CampoClave";
 
 export default function RestablecerPassword() {
   const { uid, token } = useParams();
@@ -36,9 +37,9 @@ export default function RestablecerPassword() {
         {!listo && (
           <>
             <label style={{ fontSize: "13px", fontWeight: 600 }}>Contraseña nueva</label>
-            <input style={{ ...estiloInput, marginTop: "6px" }} type="password" value={p1} onChange={(e) => setP1(e.target.value)} />
+            <CampoClave style={{ ...estiloInput, marginTop: "6px" }} value={p1} onChange={(e) => setP1(e.target.value)} />
             <label style={{ fontSize: "13px", fontWeight: 600 }}>Repetir contraseña</label>
-            <input style={{ ...estiloInput, marginTop: "6px" }} type="password" value={p2} onChange={(e) => setP2(e.target.value)} />
+            <CampoClave style={{ ...estiloInput, marginTop: "6px" }} value={p2} onChange={(e) => setP2(e.target.value)} />
             <button type="submit" disabled={enviando} style={{ ...estiloBoton, opacity: enviando ? 0.7 : 1 }}>
               {enviando ? "Guardando..." : "Guardar contraseña"}
             </button>

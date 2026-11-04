@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Scale, User, Lock } from "lucide-react";
+import { Scale, User, Lock, Eye, EyeOff } from "lucide-react";
 import BotonTema from "../components/BotonTema";
 import api from "../api";
 import { mensajeError } from "../utils/errores";
@@ -18,6 +18,7 @@ export default function Login() {
   const [enviando, setEnviando] = useState(false);
   const [focoUsuario, setFocoUsuario] = useState(false);
   const [focoPassword, setFocoPassword] = useState(false);
+  const [verClave, setVerClave] = useState(false);
   const navigate = useNavigate();
 
   const [imagenFondo] = useState(
@@ -166,7 +167,7 @@ export default function Login() {
           >
             <Lock size={18} color="#8899b4" />
             <input
-              type="password"
+              type={verClave ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onFocus={() => setFocoPassword(true)}
@@ -179,6 +180,15 @@ export default function Login() {
                 width: "100%",
               }}
             />
+            <button
+              type="button"
+              onClick={() => setVerClave((v) => !v)}
+              title={verClave ? "Ocultar contraseña" : "Mostrar contraseña"}
+              aria-label={verClave ? "Ocultar contraseña" : "Mostrar contraseña"}
+              style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#8899b4", display: "flex" }}
+            >
+              {verClave ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
         </div>
 
