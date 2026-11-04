@@ -66,7 +66,18 @@ img, svg { max-width: 100%; }
   h1 { font-size: 22px; }
 }
 
+/* ---------- Modo nocturno ----------
+   Se invierten los colores de toda la página (conservando los tonos) y se vuelven a invertir
+   el menú lateral, la barra móvil y las imágenes, para que mantengan su aspecto original. */
+html[data-tema="oscuro"] { filter: invert(1) hue-rotate(180deg); background: #ffffff; }
+html[data-tema="oscuro"] .menu-lateral,
+html[data-tema="oscuro"] .barra-movil,
+html[data-tema="oscuro"] .fondo-login,
+html[data-tema="oscuro"] img,
+html[data-tema="oscuro"] video { filter: invert(1) hue-rotate(180deg); }
+
 /* Impresión: solo el contenido */
 @media print {
+  html[data-tema="oscuro"], html[data-tema="oscuro"] img { filter: none !important; }
   .menu-lateral, .barra-movil, .menu-fondo { display: none !important; }
 }

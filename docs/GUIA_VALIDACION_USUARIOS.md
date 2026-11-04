@@ -1,6 +1,6 @@
 # Guía de validación con usuarios del oficio
 
-Objetivo: comprobar con abogados y secretarios de juzgado que Lex·ERP sirve para su trabajo real, antes de dar el sistema por terminado.
+Objetivo: comprobar con abogados y secretarios de juzgado que ACOPROHO sirve para su trabajo real, antes de dar el sistema por terminado.
 
 ## 1. Participantes
 

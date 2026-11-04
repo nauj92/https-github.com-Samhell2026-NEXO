@@ -5,6 +5,7 @@ import {
   FileSignature, Send, Users, CalendarDays, Contact, LayoutDashboard, Wallet, ChevronsLeft, ChevronsRight,
 } from "lucide-react";
 import api from "../api";
+import BotonTema from "./BotonTema";
 
 // Menú con grupos desplegables (pueden anidarse). Un elemento sin `children` es un enlace directo.
 const menu = [
@@ -273,6 +274,11 @@ export default function Sidebar() {
           </div>}
         </div>
       )}
+
+      <BotonTema
+        etiqueta={!compacto}
+        estilo={{ background: "transparent", border: `1px solid ${COLOR.borde}`, color: COLOR.texto, padding: "10px", borderRadius: "8px", marginBottom: "8px", width: "100%", fontFamily: "inherit", fontSize: "inherit" }}
+      />
 
       <button
         onClick={handleLogout}

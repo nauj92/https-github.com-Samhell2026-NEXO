@@ -15,7 +15,7 @@ def enviar_bienvenida(usuario, password_temporal):
     enlace = f"{settings.FRONTEND_URL.rstrip('/')}/login"
     cuerpo = (
         f"Hola {usuario.get_full_name() or usuario.username},\n\n"
-        f"El administrador de Lex-ERP creó su cuenta con el rol de {usuario.get_rol_display()}.\n\n"
+        f"El administrador de ACOPROHO creó su cuenta con el rol de {usuario.get_rol_display()}.\n\n"
         f"  Dirección de ingreso: {enlace}\n"
         f"  Usuario: {usuario.username}\n"
         f"  Contraseña temporal: {password_temporal}\n\n"
@@ -25,7 +25,7 @@ def enviar_bienvenida(usuario, password_temporal):
         "Por seguridad no comparta esta contraseña. Si usted no esperaba este mensaje, avise al administrador."
     )
     try:
-        send_mail("Su cuenta en Lex-ERP fue creada", cuerpo, settings.DEFAULT_FROM_EMAIL, [usuario.email])
+        send_mail("Su cuenta en ACOPROHO fue creada", cuerpo, settings.DEFAULT_FROM_EMAIL, [usuario.email])
         return True
     except Exception:
         logger.exception("No se pudo enviar el correo de bienvenida a %s", usuario.username)

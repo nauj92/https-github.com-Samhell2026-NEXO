@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Scale } from "lucide-react";
+import BotonTema from "./BotonTema";
 
 const imagenesFondo = [
   "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=1920",
@@ -18,13 +19,26 @@ export default function AuthLayout({ titulo, children, ancho = 380 }) {
         justifyContent: "center",
         position: "relative",
         backgroundColor: "#0a1a2b",
-        backgroundImage: `url(${imagenFondo})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
         padding: "16px",
       }}
     >
       <div
+        className="fondo-login"
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: `url(${imagenFondo})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      />
+      <BotonTema
+        etiqueta
+        className="fondo-login"
+        estilo={{ position: "absolute", top: "16px", right: "16px", zIndex: 2, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.4)", color: "white", padding: "8px 14px", borderRadius: "30px", fontSize: "13px", fontFamily: "inherit" }}
+      />
+      <div
+        className="fondo-login"
         style={{
           position: "absolute",
           inset: 0,
@@ -44,7 +58,7 @@ export default function AuthLayout({ titulo, children, ancho = 380 }) {
         }}
       >
         <h2 style={{ marginBottom: "8px", color: "#0a1a2b", display: "flex", alignItems: "center", gap: "10px" }}>
-          <Scale size={26} color="#d4a743" /> Lex·ERP
+          <Scale size={26} color="#d4a743" /> ACOPROHO
         </h2>
         <h3 style={{ marginBottom: "20px", color: "#4a5a70", fontWeight: 500, fontSize: "15px" }}>{titulo}</h3>
         {children}

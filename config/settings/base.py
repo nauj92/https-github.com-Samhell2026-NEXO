@@ -170,7 +170,7 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_TIMEOUT = 10
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Lex-ERP <onboarding@resend.dev>")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ACOPROHO <onboarding@resend.dev>")
 
 # Dirección del frontend, para armar el enlace del correo de recuperación de contraseña.
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")

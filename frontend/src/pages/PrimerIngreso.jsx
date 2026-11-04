@@ -7,7 +7,7 @@ import AuthLayout, { Aviso, estiloInput, estiloBoton } from "../components/AuthL
 // Texto de la autorización (Ley 1581 de 2012 y Decreto 1377 de 2013, Colombia).
 // El despacho debe revisarlo con su asesor jurídico y ajustarlo a su política de tratamiento de datos.
 const TEXTO_AUTORIZACION = [
-  ["Responsable del tratamiento", "El despacho jurídico que administra esta plataforma (Lex·ERP) es el responsable del tratamiento de los datos personales que usted registra o que se generan en el uso del sistema."],
+  ["Responsable del tratamiento", "El despacho jurídico que administra esta plataforma (ACOPROHO) es el responsable del tratamiento de los datos personales que usted registra o que se generan en el uso del sistema."],
   ["Datos que se tratan", "Nombre, documento de identidad, tarjeta profesional, correo electrónico, teléfono, rol dentro del despacho, registros de ingreso y actividad en la plataforma, y la información de los procesos, clientes y partes que usted gestione."],
   ["Finalidades", "Crear y administrar su cuenta, controlar el acceso y la seguridad, asignarle y hacer seguimiento a los procesos y términos, generar y firmar escritos judiciales, enviarle notificaciones y avisos del servicio, y cumplir obligaciones legales y contractuales."],
   ["Derechos del titular", "Usted puede conocer, actualizar, rectificar y solicitar la supresión de sus datos, pedir prueba de esta autorización, ser informado del uso que se les ha dado, revocar la autorización y presentar quejas ante la Superintendencia de Industria y Comercio."],

@@ -12,5 +12,7 @@ export default defineConfig({
     css: false,
     testTimeout: 30000, // equipos lentos: la primera carga de Intl (es-CO) puede tardar
     hookTimeout: 30000,
+    maxWorkers: 1, // equipos lentos: un solo proceso evita que se agote el tiempo de arranque de los demás
+    fileParallelism: false,
   },
 })

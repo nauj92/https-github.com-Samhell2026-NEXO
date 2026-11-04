@@ -158,12 +158,12 @@ class SolicitarRecuperacionView(APIView):
             enlace = f"{settings.FRONTEND_URL.rstrip('/')}/restablecer/{uid}/{token}"
             cuerpo = (
                 f"Hola {usuario.get_full_name() or usuario.username},\n\n"
-                "Recibimos una solicitud para restablecer la contraseña de su cuenta en Lex-ERP.\n"
+                "Recibimos una solicitud para restablecer la contraseña de su cuenta en ACOPROHO.\n"
                 f"Use este enlace (vale {settings.PASSWORD_RESET_TIMEOUT // 60} minutos):\n\n{enlace}\n\n"
                 "Si usted no lo solicitó, ignore este mensaje: su contraseña no cambiará."
             )
             try:
-                send_mail("Restablecer contraseña - Lex-ERP", cuerpo, settings.DEFAULT_FROM_EMAIL, [usuario.email])
+                send_mail("Restablecer contraseña - ACOPROHO", cuerpo, settings.DEFAULT_FROM_EMAIL, [usuario.email])
             except Exception:
                 # No se revela el fallo al solicitante; queda en el registro del servidor.
                 logger.exception("No se pudo enviar el correo de recuperación a %s", usuario.username)
