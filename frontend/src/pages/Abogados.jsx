@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Users } from "lucide-react";
 import api from "../api";
+import CampoClave from "../components/CampoClave";
 import Layout from "../components/Layout";
 import { mensajeError } from "../utils/errores";
 
@@ -29,6 +30,7 @@ const btn = (bg) => ({ background: bg, color: "white", border: "none", borderRad
 
 export default function Abogados() {
   const [perfil, setPerfil] = useState(null);
+  const [verClave, setVerClave] = useState(false);
   const [usuarios, setUsuarios] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
@@ -50,6 +52,11 @@ export default function Abogados() {
       .catch((err) => setError(mensajeError(err, "No se pudo cargar el directorio de abogados.")))
       .finally(() => setCargando(false));
   };
+  // Al cerrar el formulario, la contraseña vuelve a quedar oculta
+  useEffect(() => {
+    if (form === null) setVerClave(false);
+  }, [form]);
+
   useEffect(() => {
     api
       .get("/perfil/")
@@ -193,8 +200,10 @@ export default function Abogados() {
                 <div>
                   <label style={label}>{editandoId ? "Nueva contraseña temporal (opcional)" : "Contraseña temporal"}</label>
                   <div style={{ display: "flex", gap: "6px" }}>
-                    <input style={input} type="text" autoComplete="off" value={form.password} onChange={set("password")} />
-                    <button type="button" style={btn("#3b6ea5")} onClick={() => setForm({ ...form, password: generarClave() })}>Generar</button>
+                    <div style={{ flex: 1 }}>
+                      <CampoClave style={input} autoComplete="new-password" value={form.password} onChange={set("password")} visible={verClave} onVisible={setVerClave} />
+                    </div>
+                    <button type="button" style={btn("#3b6ea5")} onClick={() => { setForm({ ...form, password: generarClave() }); setVerClave(true); }}>Generar</button>
                   </div>
                 </div>
               </div>

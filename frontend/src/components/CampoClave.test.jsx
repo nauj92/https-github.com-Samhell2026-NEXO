@@ -22,4 +22,17 @@ describe("CampoClave", () => {
     await user.click(screen.getByRole("button", { name: "Ocultar contraseña" }));
     expect(campo.type).toBe("password");
   });
+
+  it("puede ser controlado desde afuera", async () => {
+    const user = userEvent.setup();
+    let visible = false;
+    const cambios = [];
+    const { rerender } = render(<CampoClave aria-label="clave" value="x" onChange={() => {}} visible={visible} onVisible={(v) => cambios.push(v)} />);
+    expect(screen.getByLabelText("clave").type).toBe("password");
+    await user.click(screen.getByRole("button", { name: "Mostrar contraseña" }));
+    expect(cambios).toEqual([true]);
+    visible = true;
+    rerender(<CampoClave aria-label="clave" value="x" onChange={() => {}} visible={visible} onVisible={(v) => cambios.push(v)} />);
+    expect(screen.getByLabelText("clave").type).toBe("text");
+  });
 });
