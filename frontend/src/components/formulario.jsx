@@ -2,7 +2,7 @@ import { Etiqueta } from "./ui";
 
 // Piezas compartidas por los formularios guiados por un artículo del CGP.
 
-export const dosCol = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 14px" };
+export const dosCol = { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "0 14px" };
 export const TIPOS_PERSONA = [["natural", "Persona natural"], ["juridica", "Persona jurídica / patrimonio autónomo"]];
 export const TIPOS_DOC = [["CC", "Cédula de ciudadanía"], ["CE", "Cédula de extranjería"], ["NIT", "NIT"], ["PAS", "Pasaporte"]];
 

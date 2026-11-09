@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 export const inputStyle = {
   width: "100%",
+  minWidth: 0,
   padding: "8px 10px",
   borderRadius: "8px",
   border: "1px solid #d0d9e3",

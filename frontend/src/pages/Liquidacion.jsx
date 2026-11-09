@@ -157,7 +157,7 @@ function PantallaLiquidacion({ tipo }) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const fila2 = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 14px" };
+  const fila2 = { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "0 14px" };
 
   return (
     <Layout>
@@ -171,7 +171,7 @@ function PantallaLiquidacion({ tipo }) {
           <div style={{ color: "#6b7f96", fontSize: "13px", marginTop: "4px" }}>{AYUDA[tipo]}</div>
         </header>
 
-        <main style={{ padding: "32px", display: "grid", gridTemplateColumns: "minmax(320px, 420px) 1fr", gap: "24px", alignItems: "start" }}>
+        <main style={{ padding: "32px", display: "grid", gridTemplateColumns: "minmax(320px, 420px) minmax(0, 1fr)", gap: "24px", alignItems: "start" }}>
           <form className="no-imprimir" onSubmit={calcular} style={{ background: "white", borderRadius: "16px", border: "1px solid #eef2f6", padding: "24px" }}>
             {error && <p style={mensajeErrorEstilo}>{error}</p>}
 
@@ -241,7 +241,7 @@ function PantallaLiquidacion({ tipo }) {
                 ) : (
                   <div style={{ marginBottom: "14px" }}>
                     {f.periodos.map((p, i) => (
-                      <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 70px 24px", gap: "6px", marginBottom: "6px" }}>
+                      <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) 70px 24px", gap: "6px", marginBottom: "6px" }}>
                         <input type="date" required value={p.desde} onChange={(e) => setFila("periodos", i, "desde", e.target.value)} style={inputStyle} title="Desde" />
                         <input type="date" required value={p.hasta} onChange={(e) => setFila("periodos", i, "hasta", e.target.value)} style={inputStyle} title="Hasta" />
                         <input type="number" min="0" max="200" step="any" required placeholder="% EA" value={p.tasa_ea} onChange={(e) => setFila("periodos", i, "tasa_ea", e.target.value)} style={inputStyle} />
@@ -255,7 +255,7 @@ function PantallaLiquidacion({ tipo }) {
                 <div style={{ marginBottom: "14px" }}>
                   <div style={{ fontSize: "13px", color: "#6b7f96", marginBottom: "4px" }}>Abonos (opcional)</div>
                   {f.abonos.map((a, i) => (
-                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 24px", gap: "6px", marginBottom: "6px" }}>
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) 24px", gap: "6px", marginBottom: "6px" }}>
                       <input type="date" required value={a.fecha} onChange={(e) => setFila("abonos", i, "fecha", e.target.value)} style={inputStyle} />
                       <input type="number" min="1" step="any" required placeholder="Valor" value={a.valor} onChange={(e) => setFila("abonos", i, "valor", e.target.value)} style={inputStyle} />
                       <button type="button" onClick={() => quitarFila("abonos", i)} style={{ border: "none", background: "none", color: "#c73a3a", cursor: "pointer" }}>✕</button>
@@ -283,7 +283,7 @@ function PantallaLiquidacion({ tipo }) {
                 <div style={{ marginBottom: "14px" }}>
                   <div style={{ fontSize: "13px", color: "#6b7f96", marginBottom: "4px" }}>Cuotas extraordinarias (opcional)</div>
                   {f.extraordinarias.map((x, i) => (
-                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 24px", gap: "6px", marginBottom: "6px" }}>
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 24px", gap: "6px", marginBottom: "6px" }}>
                       <input type="text" placeholder="Concepto" value={x.concepto} onChange={(e) => setFila("extraordinarias", i, "concepto", e.target.value)} style={inputStyle} />
                       <input type="date" required value={x.fecha_vencimiento} onChange={(e) => setFila("extraordinarias", i, "fecha_vencimiento", e.target.value)} style={inputStyle} />
                       <input type="number" min="1" step="any" required placeholder="Valor" value={x.valor} onChange={(e) => setFila("extraordinarias", i, "valor", e.target.value)} style={inputStyle} />
@@ -312,7 +312,7 @@ function PantallaLiquidacion({ tipo }) {
                 <div style={{ marginBottom: "14px" }}>
                   <div style={{ fontSize: "13px", color: "#6b7f96", marginBottom: "4px" }}>Mesadas adicionales (prima, Navidad, útiles…)</div>
                   {f.adicionales.map((x, i) => (
-                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 24px", gap: "6px", marginBottom: "6px" }}>
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 24px", gap: "6px", marginBottom: "6px" }}>
                       <input type="text" placeholder="Concepto" value={x.concepto} onChange={(e) => setFila("adicionales", i, "concepto", e.target.value)} style={inputStyle} />
                       <input type="date" required value={x.fecha_vencimiento} onChange={(e) => setFila("adicionales", i, "fecha_vencimiento", e.target.value)} style={inputStyle} />
                       <input type="number" min="1" step="any" required placeholder="Valor" value={x.valor} onChange={(e) => setFila("adicionales", i, "valor", e.target.value)} style={inputStyle} />
