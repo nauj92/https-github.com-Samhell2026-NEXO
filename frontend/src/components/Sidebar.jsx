@@ -180,7 +180,6 @@ export default function Sidebar() {
         flexDirection: "column",
         padding: compacto ? "24px 10px" : "24px 16px",
         minHeight: "100vh",
-        transition: "width 0.2s ease",
         overflowX: "hidden",
       }}
     >

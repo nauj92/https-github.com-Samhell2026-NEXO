@@ -51,7 +51,7 @@ export default function Notificaciones() {
     <Layout>
       <div style={{ minHeight: "100vh", background: "#f4f7fb", fontFamily: "sans-serif" }}>
         <Encabezado Icono={Bell} titulo="Notificaciones" />
-        <main style={{ padding: "32px", maxWidth: "820px" }}>
+        <main style={{ padding: "32px", maxWidth: "1100px" }}>
           <p style={{ color: "#6b7f96", fontSize: "13px", marginTop: 0 }}>
             Avisos automáticos de audiencias y diligencias, plazos de subsanación y contestación, citaciones, vigilancia sin movimiento y facturas.
           </p>

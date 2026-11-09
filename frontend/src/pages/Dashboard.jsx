@@ -90,10 +90,12 @@ function FechaHora() {
   }, []);
   const dia = ahora.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const hora = ahora.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", second: "2-digit" });
+  // El reloj va en su propia capa (willChange/translateZ) y con ancho fijo (ch + cifras tabulares):
+  // así, al cambiar cada segundo, solo se repinta esta capa (sin parpadeo ni saltos del texto ni del resto de la página).
   return (
-    <div style={{ textAlign: "right" }}>
-      <div style={{ fontSize: "14px", fontWeight: 600 }}>{dia.charAt(0).toUpperCase() + dia.slice(1)}</div>
-      <div style={{ fontSize: "20px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{hora}</div>
+    <div style={{ textAlign: "right", willChange: "transform", transform: "translateZ(0)", contain: "layout style" }}>
+      <div style={{ fontSize: "14px", fontWeight: 600, whiteSpace: "nowrap" }}>{dia.charAt(0).toUpperCase() + dia.slice(1)}</div>
+      <div style={{ fontSize: "20px", fontWeight: 700, fontVariantNumeric: "tabular-nums", minWidth: "14ch", whiteSpace: "nowrap", marginLeft: "auto" }}>{hora}</div>
     </div>
   );
 }
@@ -124,7 +126,7 @@ export default function Dashboard() {
     <Layout>
       <Encabezado Icono={LayoutDashboard} titulo="Dashboard" />
       <div style={{ padding: "24px 32px", background: "linear-gradient(180deg, #e8f0f9 0%, #f3f6fa 320px)", minHeight: "calc(100vh - 64px)" }}>
-        <div style={{ maxWidth: "1100px" }}>
+        <div style={{ maxWidth: "1800px" }}>
         <div className="banner-resumen" style={{ background: "linear-gradient(120deg, #1d3f66 0%, #3b6ea5 100%)", color: "white", borderRadius: "16px", padding: "20px 24px", marginBottom: "20px", display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "center", borderBottom: "4px solid #d4a743" }}>
           <div>
             <div style={{ fontSize: "20px", fontWeight: 700 }}>Resumen del despacho</div>

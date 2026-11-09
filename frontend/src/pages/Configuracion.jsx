@@ -91,7 +91,7 @@ export default function Configuracion() {
           Configuración
         </header>
 
-        <main style={{ padding: "32px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", maxWidth: "900px" }}>
+        <main style={{ padding: "32px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", maxWidth: "1200px" }}>
           {/* Editar perfil */}
           <div style={{ background: "white", borderRadius: "16px", padding: "24px", border: "1px solid #eef2f6" }}>
             <h3 style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -230,4 +230,4 @@ const inputStyle = {
   border: "1px solid #d0d9e3",
   fontSize: "14px",
   boxSizing: "border-box",
-};
+};
