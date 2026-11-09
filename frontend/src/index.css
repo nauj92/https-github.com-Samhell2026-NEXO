@@ -79,6 +79,11 @@ html[data-tema="oscuro"] video { filter: invert(1) hue-rotate(180deg); }
 
 html[data-tema="oscuro"] .menu-lateral { scrollbar-width: thin; scrollbar-color: #4a77a8 #1d3f66; }
 
+/* Tarjetas de totales del Dashboard (enlaces) */
+.tarjeta-resumen { box-shadow: 0 1px 3px rgba(20,48,79,0.06); cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+.tarjeta-resumen:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(20,48,79,0.16); }
+.tarjeta-resumen:focus-visible { outline: 3px solid #d4a743; outline-offset: 2px; }
+
 /* Impresión: solo el contenido */
 @media print {
   html[data-tema="oscuro"], html[data-tema="oscuro"] img { filter: none !important; }

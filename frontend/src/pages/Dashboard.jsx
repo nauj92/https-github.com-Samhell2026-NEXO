@@ -29,9 +29,15 @@ const fechaCorta = (iso) => {
 };
 const fechaHora = (iso) => new Date(iso).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" });
 
-function Tarjeta({ titulo, valor, Icono, color = "#2f5d8a", alerta }) {
+// Tarjeta de total: es un enlace a la pantalla del módulo. En una fila, las tarjetas se reparten todo el ancho.
+function Tarjeta({ titulo, valor, Icono, color = "#2f5d8a", alerta, to }) {
   return (
-    <div style={{ background: `linear-gradient(135deg, ${color}18 0%, #ffffff 70%)`, border: `1px solid ${alerta ? "#f0b8b8" : color + "33"}`, borderLeft: `5px solid ${color}`, borderRadius: "14px", padding: "16px 18px", display: "flex", alignItems: "center", gap: "14px", boxShadow: "0 1px 3px rgba(20,48,79,0.06)" }}>
+    <Link
+      to={to}
+      className="tarjeta-resumen"
+      title={`Ver ${titulo.toLowerCase()}`}
+      style={{ flex: "1 1 max(220px, calc((100% - 42px) / 4))", minWidth: 0, textDecoration: "none", background: `linear-gradient(135deg, ${color}18 0%, #ffffff 70%)`, border: `1px solid ${alerta ? "#f0b8b8" : color + "33"}`, borderLeft: `5px solid ${color}`, borderRadius: "14px", padding: "16px 18px", display: "flex", alignItems: "center", gap: "14px" }}
+    >
       <div style={{ background: color, borderRadius: "12px", padding: "10px", display: "flex" }}>
         <Icono size={22} color="white" />
       </div>
@@ -39,7 +45,7 @@ function Tarjeta({ titulo, valor, Icono, color = "#2f5d8a", alerta }) {
         <div style={{ fontSize: "28px", fontWeight: 700, color: alerta ? "#c73a3a" : "#14304f", lineHeight: 1.1 }}>{valor}</div>
         <div style={{ fontSize: "13px", color: "#51667d" }}>{titulo}</div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -138,15 +144,15 @@ export default function Dashboard() {
         {!d && !error && <div style={{ color: "#6b7f96" }}>Cargando…</div>}
         {d && (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px", marginBottom: "20px" }}>
-              <Tarjeta titulo="Demandas" valor={d.totales.demandas} Icono={FileText} color="#2f5d8a" />
-              <Tarjeta titulo="Contestaciones" valor={d.totales.contestaciones} Icono={FileSignature} alerta={d.contestaciones_vencidas > 0} color="#6b5ca5" />
-              <Tarjeta titulo="Clientes" valor={d.totales.clientes} Icono={Contact} color="#2a8fa6" />
-              {d.es_directivo && <Tarjeta titulo="Abogados" valor={d.totales.abogados} Icono={Users} color="#d4a743" />}
-              <Tarjeta titulo="Audiencias" valor={d.totales.audiencias} Icono={CalendarDays} color="#2e8b6e" />
-              <Tarjeta titulo="Acuerdos de pago" valor={d.totales.acuerdos} Icono={Wallet} alerta={d.acuerdos_pago.en_mora > 0} color="#8a7a2b" />
-              <Tarjeta titulo="Diligencias judiciales" valor={d.totales.diligencias} Icono={Gavel} color="#d9822b" />
-              <Tarjeta titulo="Expedientes (casos)" valor={d.totales.expedientes} Icono={Briefcase} color="#c0504d" />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "14px", marginBottom: "20px" }}>
+              <Tarjeta titulo="Demandas" to="/demandas" valor={d.totales.demandas} Icono={FileText} color="#2f5d8a" />
+              <Tarjeta titulo="Contestaciones" to="/contestaciones" valor={d.totales.contestaciones} Icono={FileSignature} alerta={d.contestaciones_vencidas > 0} color="#6b5ca5" />
+              <Tarjeta titulo="Clientes" to="/clientes" valor={d.totales.clientes} Icono={Contact} color="#2a8fa6" />
+              {d.es_directivo && <Tarjeta titulo="Abogados" to="/abogados" valor={d.totales.abogados} Icono={Users} color="#d4a743" />}
+              <Tarjeta titulo="Audiencias" to="/audiencias" valor={d.totales.audiencias} Icono={CalendarDays} color="#2e8b6e" />
+              <Tarjeta titulo="Acuerdos de pago" to="/acuerdos" valor={d.totales.acuerdos} Icono={Wallet} alerta={d.acuerdos_pago.en_mora > 0} color="#8a7a2b" />
+              <Tarjeta titulo="Diligencias judiciales" to="/audiencias" valor={d.totales.diligencias} Icono={Gavel} color="#d9822b" />
+              <Tarjeta titulo="Expedientes (casos)" to="/expedientes" valor={d.totales.expedientes} Icono={Briefcase} color="#c0504d" />
             </div>
 
             <Panel color="#2f5d8a" id="ramas" titulo="Casos por rama del derecho" resumen={`${d.totales.expedientes} caso(s)`} abierto={abierto("ramas")} alternar={alternar}>
