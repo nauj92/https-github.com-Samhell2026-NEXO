@@ -89,7 +89,7 @@ function FechaHora() {
     return () => clearInterval(id);
   }, []);
   const dia = ahora.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  const hora = ahora.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", second: "2-digit" });
+  const hora = ahora.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true });
   // El reloj va en su propia capa (willChange/translateZ) y con ancho fijo (ch + cifras tabulares):
   // así, al cambiar cada segundo, solo se repinta esta capa (sin parpadeo ni saltos del texto ni del resto de la página).
   return (
