@@ -396,7 +396,6 @@ export default function Expedientes() {
         {mostrarForm && (
           <div
             style={{ position: "fixed", inset: 0, background: "rgba(10,26,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
-            onClick={handleCerrarModal}
           >
             <form
               onClick={(e) => e.stopPropagation()}
@@ -476,7 +475,6 @@ export default function Expedientes() {
         {detalle && (
           <div
             style={{ position: "fixed", inset: 0, background: "rgba(10,26,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
-            onClick={() => { setDetalle(null); setNuevaEtapa({ nombre: "", fecha_limite: "", dias_habiles: "" }); }}
           >
             <div
               onClick={(e) => e.stopPropagation()}
@@ -487,7 +485,7 @@ export default function Expedientes() {
                   <Scale size={20} />
                   Expediente {detalle.numero}
                 </h2>
-                <span onClick={() => setDetalle(null)} style={{ cursor: "pointer", fontSize: "22px" }}>&times;</span>
+                <span onClick={() => { setDetalle(null); setNuevaEtapa({ nombre: "", fecha_limite: "", dias_habiles: "" }); }} style={{ cursor: "pointer", fontSize: "22px" }}>&times;</span>
               </div>
 
               <p>
@@ -656,4 +654,4 @@ const inputStyle = {
 };
 
 const thStyle = { textAlign: "left", padding: "14px 16px", color: "#6b7f96", fontWeight: 600, borderBottom: "1px solid #e9edf2" };
-const tdStyle = { padding: "14px 16px" };
+const tdStyle = { padding: "14px 16px" };

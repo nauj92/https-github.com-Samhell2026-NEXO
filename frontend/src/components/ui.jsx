@@ -40,10 +40,12 @@ export function Encabezado({ Icono, titulo, busqueda, setBusqueda, placeholder, 
   );
 }
 
-export function Modal({ onClose, ancho = 520, children, comoFormulario, onSubmit }) {
+// Ventana emergente. Por defecto NO se cierra al hacer clic afuera (así no se pierde lo digitado):
+// se cierra solo con sus botones (Guardar, Cancelar, ×). cerrarAlClicFuera = true reactiva el cierre por clic afuera.
+export function Modal({ onClose, ancho = 520, children, comoFormulario, onSubmit, cerrarAlClicFuera = false }) {
   const caja = { background: "white", borderRadius: "20px", padding: "28px", width: `${ancho}px`, maxWidth: "95vw", maxHeight: "88vh", overflowY: "auto" };
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(10,26,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={onClose}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(10,26,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={cerrarAlClicFuera ? onClose : undefined}>
       {comoFormulario ? (
         <form onClick={(e) => e.stopPropagation()} onSubmit={onSubmit} style={caja}>
           {children}

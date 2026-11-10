@@ -262,7 +262,6 @@ export default function Audiencias() {
         {mostrarForm && (
           <div
             style={{ position: "fixed", inset: 0, background: "rgba(10,26,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
-            onClick={handleCerrarModal}
           >
             <form
               onClick={(e) => e.stopPropagation()}
@@ -325,7 +324,6 @@ export default function Audiencias() {
         {detalle && (
           <div
             style={{ position: "fixed", inset: 0, background: "rgba(10,26,43,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
-            onClick={() => setDetalle(null)}
           >
             <div
               onClick={(e) => e.stopPropagation()}
