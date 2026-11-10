@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import SelectorBuscable from "./SelectorBuscable";
 import { Campo } from "./ui";
 import { DEPARTAMENTOS, ENTIDADES, ESPECIALIDADES } from "../data/catalogos";
+import { municipioAutomatico, municipiosDe } from "../utils/despachos";
 
 const unicos = (lista) => [...new Set(lista.filter(Boolean))];
 const ordenar = (lista) => [...lista].sort((a, b) => a.localeCompare(b, "es"));
@@ -27,14 +28,15 @@ export default function SelectorDespacho({ juzgados, value, onChange, required =
 
   const cambiar = (campo) => (v) => {
     const nuevo = { ...f, [campo]: v };
-    if (campo === "departamento") nuevo.municipio = "";
+    // Al cambiar de departamento se limpia el municipio; si es Bogotá, se elige Bogotá directamente
+    if (campo === "departamento") nuevo.municipio = municipioAutomatico(juzgados, v);
     setF(nuevo);
     const sigue = actual && coincide(actual, nuevo);
     if (actual && !sigue) onChange("");
   };
 
   const lista = useMemo(() => juzgados.filter((j) => coincide(j, f)), [juzgados, f]); // eslint-disable-line react-hooks/exhaustive-deps
-  const municipios = ordenar(unicos(juzgados.filter((j) => !f.departamento || j.departamento === f.departamento).map((j) => j.municipio)));
+  const municipios = municipiosDe(juzgados, f.departamento, f.municipio);
   const entidades = unicos([...ENTIDADES, ...juzgados.map((j) => j.entidad)]);
   const especialidades = unicos([...ESPECIALIDADES, ...juzgados.map((j) => j.especialidad)]);
   const departamentos = ordenar(unicos([...DEPARTAMENTOS, ...juzgados.map((j) => j.departamento)]));

@@ -4,6 +4,7 @@ import api from "../api";
 import { mensajeError } from "../utils/errores";
 import Layout from "../components/Layout";
 import { EnlaceExpedientes } from "../components/ui";
+import CampoFechaHora from "../components/CampoFechaHora";
 
 export default function Audiencias() {
   const [audiencias, setAudiencias] = useState([]);
@@ -293,14 +294,7 @@ export default function Audiencias() {
               </Campo>
 
               <Campo label="Fecha y hora">
-                <input
-                  type="datetime-local"
-                  name="fecha_hora"
-                  value={form.fecha_hora}
-                  onChange={handleChange}
-                  required
-                  style={inputStyle}
-                />
+                <CampoFechaHora value={form.fecha_hora} onChange={(v) => setForm((prev) => ({ ...prev, fecha_hora: v }))} required />
               </Campo>
 
               <Campo label="Lugar">
