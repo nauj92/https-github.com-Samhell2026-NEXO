@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import api from "../api";
 import BotonTema from "./BotonTema";
+import { nombreRol, puedeVerRuta, rutaInicial } from "../utils/permisos";
 
 // Menú con grupos desplegables (pueden anidarse). Un elemento sin `children` es un enlace directo.
 const menu = [
@@ -69,12 +70,11 @@ function leerAbiertos() {
   }
 }
 
-const rolLabels = {
-  administrador: "Administrador",
-  socio_director: "Socio Director",
-  abogado: "Abogado",
-  secretario_juridico: "Secretario Jurídico",
-};
+// Deja solo las pantallas que el rol puede ver; un grupo sin pantallas visibles desaparece.
+const filtrarMenu = (items, perfil) =>
+  items
+    .map((i) => (i.children ? { ...i, children: filtrarMenu(i.children, perfil) } : i))
+    .filter((i) => (i.children ? i.children.length > 0 : puedeVerRuta(perfil, i.to)));
 
 export default function Sidebar() {
   const navigate = useNavigate();
@@ -116,6 +116,7 @@ export default function Sidebar() {
         // Mientras no cambie la contraseña temporal y autorice el uso de sus datos, solo ve esa pantalla
         if (p.debe_cambiar_password || p.autorizacion_datos_pendiente) navigate("/primer-ingreso", { replace: true });
         else if (p.rol === "cliente" && location.pathname !== "/configuracion") navigate("/configuracion", { replace: true });
+        else if (!puedeVerRuta(p, location.pathname)) navigate(rutaInicial(p), { replace: true });
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -212,7 +213,7 @@ export default function Sidebar() {
       )}
 
       <nav style={{ flex: 1 }}>
-        {perfil?.rol !== "cliente" && menu.map((item) => (
+        {perfil && perfil.rol !== "cliente" && filtrarMenu(menu, perfil).map((item) => (
           <ElementoMenu key={item.id || item.to} item={item} nivel={0} abiertos={abiertos} alternar={alternar} ruta={location.pathname} compacto={compacto} expandir={() => cambiarCompacto(false)} />
         ))}
       </nav>
@@ -268,7 +269,7 @@ export default function Sidebar() {
               {nombreCompleto}
             </div>
             <div style={{ fontSize: "12px", color: COLOR.apagado }}>
-              {rolLabels[perfil.rol] || perfil.rol}
+              {nombreRol(perfil.rol)}{perfil.es_socio ? " · Socio" : ""}
             </div>
           </div>}
         </div>

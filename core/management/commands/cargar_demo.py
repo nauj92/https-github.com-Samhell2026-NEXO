@@ -94,6 +94,11 @@ class Command(BaseCommand):
         self._factura("DEMO-002", exp2, marta, "Honorarios de representación", "2800000", "pagada", hoy - timedelta(days=12), hoy - timedelta(days=2), pagada_el=hoy - timedelta(days=3))
         self._factura("DEMO-003", exp3, camila, "Honorarios por asesoría", "1500000", "pendiente", hoy - timedelta(days=30), hoy - timedelta(days=5))
 
+        if secretario is not None and secretario.rol == "secretario_juridico":
+            # La secretaria de ejemplo apoya los expedientes de demostración (así los ve según su alcance)
+            for exp in Expediente.objects.filter(abogado_asignado__in=[socio, abogada]):
+                exp.colaboradores.add(secretario)
+
         creadas = generar_para_todos()
         self.stdout.write(self.style.SUCCESS(f"Datos de demostración listos. Notificaciones generadas: {creadas}."))
         if abogada != socio:
@@ -104,7 +109,7 @@ class Command(BaseCommand):
         if not password:
             return None, None, None
         datos = [
-            ("socio.herrera", "Andrés", "Herrera", "socio_director"),
+            ("socio.herrera", "Andrés", "Herrera", "abogado"),
             ("abogada.rojas", "Laura", "Rojas", "abogado"),
             ("secretario.diaz", "Camilo", "Díaz", "secretario_juridico"),
         ]
@@ -117,6 +122,7 @@ class Command(BaseCommand):
                     "last_name": apellido,
                     "email": f"{username}@lexerp.example",
                     "rol": rol,
+                    "es_socio": username == "socio.herrera",
                 },
             )
             if creado:

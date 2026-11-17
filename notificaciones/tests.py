@@ -68,14 +68,15 @@ class GeneracionAutomaticaTests(APITestCase):
         EtapaProceso.objects.create(expediente=cerrado, nombre="Vieja", fecha_limite=self.hoy - timedelta(days=1))
         self.assertEqual(generar_para_usuario(self.abogado), 0)
 
-    def test_facturas_vencidas_se_marcan_y_solo_avisan_a_directivos(self):
+    def test_facturas_vencidas_se_marcan_y_avisan_a_quien_consulta_finanzas(self):
         fac = Factura.objects.create(
             numero="F-1", expediente=self.exp, cliente=crear_cliente(), concepto="Honorarios", monto=1000,
             fecha_vencimiento=self.hoy - timedelta(days=3),
         )
-        self.assertEqual(generar_para_usuario(self.abogado), 0)  # el abogado no recibe avisos de facturación
+        self.assertEqual(generar_para_usuario(self.abogado), 1)  # el abogado consulta finanzas: ve las de sus expedientes
         fac.refresh_from_db()
-        self.assertEqual(fac.estado, "vencida")  # pero la factura ya quedó marcada como vencida
+        self.assertEqual(fac.estado, "vencida")  # y la factura quedó marcada como vencida
+        self.assertEqual(generar_para_usuario(self.otro), 0)  # pero no las de expedientes ajenos
 
         self.assertEqual(generar_para_usuario(self.admin), 1)
         self.assertIn("VENCIDA", self.mensajes(self.admin, "factura")[0])

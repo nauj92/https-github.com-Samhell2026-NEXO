@@ -5,10 +5,12 @@ import Layout from "../components/Layout";
 import NuevoCliente from "../components/NuevoCliente";
 import { mensajeError } from "../utils/errores";
 import { Encabezado, thStyle, tdStyle, enlace } from "../components/ui";
+import { usePermisos } from "../utils/permisos";
 
 export default function Clientes() {
   const [lista, setLista] = useState([]);
-  const [perfil, setPerfil] = useState(null);
+  const permiso = usePermisos("clientes");
+  const perfil = permiso.perfil;
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
   const [cargando, setCargando] = useState(true);
@@ -25,7 +27,6 @@ export default function Clientes() {
   };
   useEffect(() => {
     cargar();
-    api.get("/perfil/").then((r) => setPerfil(r.data)).catch(() => {});
   }, []);
 
   const eliminar = async (c) => {
@@ -46,7 +47,7 @@ export default function Clientes() {
   return (
     <Layout>
       <div style={{ minHeight: "100vh", background: "#f4f7fb", fontFamily: "sans-serif" }}>
-        <Encabezado Icono={Contact} titulo="Clientes" busqueda={busqueda} setBusqueda={setBusqueda} placeholder="Buscar cliente..." textoBoton="+ Nuevo cliente" onNuevo={() => setEditando(null)} />
+        <Encabezado Icono={Contact} titulo="Clientes" busqueda={busqueda} setBusqueda={setBusqueda} placeholder="Buscar cliente..." textoBoton="+ Nuevo cliente" onNuevo={permiso.crear ? () => setEditando(null) : undefined} />
         <main style={{ padding: "32px" }}>
           <p style={{ color: "#6b7f96", fontSize: "13px", marginTop: 0 }}>
             Los clientes que cree aquí aparecen para seleccionarlos al elaborar demandas, contestaciones y expedientes.
@@ -70,8 +71,8 @@ export default function Clientes() {
                       <td style={tdStyle}>{c.email || "—"}</td>
                       <td style={tdStyle}>{c.direccion || "—"}</td>
                       <td style={tdStyle}>
-                        <button style={enlace("#a8681a")} onClick={() => setEditando(c)}>Editar</button>
-                        {perfil?.es_directivo && <button style={enlace("#c73a3a")} onClick={() => eliminar(c)}>Eliminar</button>}
+                        {permiso.editar && <button style={enlace("#a8681a")} onClick={() => setEditando(c)}>Editar</button>}
+                        {permiso.eliminar && <button style={enlace("#c73a3a")} onClick={() => eliminar(c)}>Eliminar</button>}
                       </td>
                     </tr>
                   ))}

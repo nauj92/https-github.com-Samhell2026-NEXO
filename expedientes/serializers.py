@@ -2,7 +2,9 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 from rest_framework import serializers
 
-from core.permisos import es_directivo, exigir_expediente_visible
+from core.permisos import (
+    ROL_ABOGADO, ROL_ESCRIBIENTE, ROL_SECRETARIA, es_directivo, exigir_expediente_visible,
+)
 from core.plazos import sumar_dias_habiles
 
 from .models import DocumentoExpediente, EtapaProceso, Expediente, Juzgado
@@ -116,11 +118,43 @@ class ExpedienteSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         request = self.context.get("request")
-        abogado = attrs.get("abogado_asignado")
-        # Un abogado o secretario no puede pasar sus expedientes a otra persona.
-        if request and abogado and not es_directivo(request.user) and abogado != request.user:
+        usuario = request.user if request else None
+        actual = self.instance
+        # La secretaria da de alta expedientes y corrige sus datos básicos; no toca lo jurídico ni el equipo.
+        es_secretaria = (
+            usuario is not None and getattr(usuario, "rol", None) == ROL_SECRETARIA and not es_directivo(usuario)
+        )
+
+        if "abogado_asignado" in attrs:
+            abogado = attrs["abogado_asignado"]
+            if actual is None or abogado != actual.abogado_asignado:
+                # El administrador no ejerce como abogado: el responsable de un caso es siempre un abogado.
+                if getattr(abogado, "rol", None) != ROL_ABOGADO:
+                    raise serializers.ValidationError(
+                        {"abogado_asignado": "El responsable del expediente debe ser un usuario con rol Abogado."}
+                    )
+                if usuario is not None and actual is not None and es_secretaria:
+                    raise serializers.ValidationError(
+                        {"abogado_asignado": "La secretaria no puede cambiar el abogado asignado."}
+                    )
+                # Un abogado no puede pasar sus expedientes a otra persona; la secretaria solo al dar de alta.
+                if usuario is not None and not es_directivo(usuario) and not es_secretaria and abogado != usuario:
+                    raise serializers.ValidationError(
+                        {"abogado_asignado": "Solo un socio o un administrador puede asignar expedientes a otro abogado."}
+                    )
+
+        if "colaboradores" in attrs:
+            colaboradores = attrs["colaboradores"]
+            if any(getattr(u, "rol", None) not in (ROL_SECRETARIA, ROL_ESCRIBIENTE) for u in colaboradores):
+                raise serializers.ValidationError(
+                    {"colaboradores": "Solo secretarias y escribientes pueden integrar el equipo de apoyo."}
+                )
+            if es_secretaria and actual is not None and set(colaboradores) != set(actual.colaboradores.all()):
+                raise serializers.ValidationError({"colaboradores": "La secretaria no puede cambiar el equipo de apoyo."})
+
+        if es_secretaria and actual is not None and "estado" in attrs and attrs["estado"] != actual.estado:
             raise serializers.ValidationError(
-                {"abogado_asignado": "Solo un socio o un administrador puede asignar expedientes a otro abogado."}
+                {"estado": "La secretaria solo modifica datos básicos: el estado del caso lo cambia el abogado."}
             )
         return attrs
 

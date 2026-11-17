@@ -4,15 +4,8 @@ import api from "../api";
 import CampoClave from "../components/CampoClave";
 import Layout from "../components/Layout";
 import { mensajeError } from "../utils/errores";
+import { ROLES } from "../utils/permisos";
 
-const ROLES = [
-  ["administrador", "Administrador"],
-  ["socio_director", "Socio Director"],
-  ["abogado", "Abogado"],
-  ["secretario_juridico", "Secretario(a) Jurídico"],
-  ["escribiente", "Escribiente"],
-  ["cliente", "Cliente"],
-];
 
 // Contraseña temporal aleatoria (12 caracteres, sin símbolos ambiguos)
 const generarClave = () => {
@@ -22,7 +15,7 @@ const generarClave = () => {
   return Array.from(a, (n) => letras[n % letras.length]).join("") + "#7";
 };
 
-const vacio = { username: "", first_name: "", last_name: "", email: "", telefono: "", cedula: "", tarjeta_profesional: "", rol: "abogado", password: "" };
+const vacio = { username: "", first_name: "", last_name: "", email: "", telefono: "", cedula: "", tarjeta_profesional: "", rol: "abogado", es_socio: false, password: "" };
 
 const input = { width: "100%", padding: "8px 10px", border: "1px solid #d5dbe5", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" };
 const label = { fontSize: "12px", fontWeight: 600, color: "#4a5a70", display: "block", marginBottom: "4px" };
@@ -40,14 +33,14 @@ export default function Abogados() {
   const [formError, setFormError] = useState("");
   const [guardando, setGuardando] = useState(false);
 
-  const directivo = !!perfil?.es_directivo;
-  const administrador = !!perfil?.es_administrador; // solo el administrador crea y modifica usuarios
+  const administrador = !!perfil?.es_administrador; // solo el administrador gestiona usuarios y roles
+  const directivo = administrador;
 
-  const cargar = (esDirectivo = directivo) => {
+  const cargar = (esAdmin = administrador) => {
     setCargando(true);
     // Administradores y socios gestionan los usuarios; el resto solo consulta el directorio de abogados.
     api
-      .get(esDirectivo ? "/gestion-usuarios/" : "/usuarios/")
+      .get(esAdmin ? "/gestion-usuarios/" : "/usuarios/")
       .then((r) => setUsuarios(r.data.results ?? r.data))
       .catch((err) => setError(mensajeError(err, "No se pudo cargar el directorio de abogados.")))
       .finally(() => setCargando(false));
@@ -62,7 +55,7 @@ export default function Abogados() {
       .get("/perfil/")
       .then((r) => {
         setPerfil(r.data);
-        cargar(r.data.es_directivo);
+        cargar(r.data.es_administrador);
       })
       .catch((err) => {
         setError(mensajeError(err, "No se pudo cargar el perfil."));
@@ -73,7 +66,7 @@ export default function Abogados() {
 
   const abrirNuevo = () => { setForm({ ...vacio }); setEditandoId(null); setFormError(""); };
   const abrirEditar = (u) => {
-    setForm({ username: u.username, first_name: u.first_name, last_name: u.last_name, email: u.email, telefono: u.telefono || "", cedula: u.cedula || "", tarjeta_profesional: u.tarjeta_profesional || "", rol: u.rol, password: "" });
+    setForm({ username: u.username, first_name: u.first_name, last_name: u.last_name, email: u.email, telefono: u.telefono || "", cedula: u.cedula || "", tarjeta_profesional: u.tarjeta_profesional || "", rol: u.rol, es_socio: !!u.es_socio, password: "" });
     setEditandoId(u.id);
     setFormError("");
   };
@@ -160,7 +153,7 @@ export default function Abogados() {
                   {directivo && <td style={{ padding: "12px" }}>{u.email}</td>}
                   {directivo && <td style={{ padding: "12px" }}>{u.cedula || "—"}</td>}
                   {directivo && <td style={{ padding: "12px" }}>{u.tarjeta_profesional || "—"}</td>}
-                  <td style={{ padding: "12px" }}>{(ROLES.find((r) => r[0] === u.rol) || [])[1] || u.rol}</td>
+                  <td style={{ padding: "12px" }}>{(ROLES.find((r) => r[0] === u.rol) || [])[1] || u.rol}{u.es_socio ? " · Socio" : ""}</td>
                   {directivo && <td style={{ padding: "12px", color: u.is_active ? "#1d6b3a" : "#c73a3a" }}>{u.is_active ? "Activo" : "Inactivo"}</td>}
                   {directivo && <td style={{ padding: "12px", color: u.debe_cambiar_password || u.autorizacion_datos_pendiente ? "#a8681a" : "#1d6b3a" }}>{u.debe_cambiar_password || u.autorizacion_datos_pendiente ? "Pendiente" : "Completo"}</td>}
                   {administrador && <td style={{ padding: "12px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
@@ -197,6 +190,12 @@ export default function Abogados() {
                     {ROLES.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
                   </select>
                 </div>
+                {form.rol === "abogado" && (
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px" }}>
+                    <input type="checkbox" checked={!!form.es_socio} onChange={(e) => setForm({ ...form, es_socio: e.target.checked })} />
+                    Socio del despacho (ve todos los expedientes)
+                  </label>
+                )}
                 <div>
                   <label style={label}>{editandoId ? "Nueva contraseña temporal (opcional)" : "Contraseña temporal"}</label>
                   <div style={{ display: "flex", gap: "6px" }}>

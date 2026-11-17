@@ -112,14 +112,16 @@ class LiquidacionApiTests(APITestCase):
         self.client.force_authenticate(self.otro)
         self.assertEqual(len(self.client.get("/api/liquidaciones/").data), 1)
 
-    def test_eliminar_solo_el_autor_o_directivo(self):
+    def test_eliminar_solo_el_administrador(self):
         self.client.force_authenticate(self.abogado)
         pk = self.client.post(
             "/api/liquidaciones/", {"tipo": "cuotas", "referencia": "X", "datos": CUOTAS}, format="json"
         ).data["id"]
         self.client.force_authenticate(self.otro)
-        self.assertEqual(self.client.delete(f"/api/liquidaciones/{pk}/").status_code, 404)
+        self.assertEqual(self.client.delete(f"/api/liquidaciones/{pk}/").status_code, 403)
         self.client.force_authenticate(self.abogado)
+        self.assertEqual(self.client.delete(f"/api/liquidaciones/{pk}/").status_code, 403)  # ni el autor: solo el administrador
+        self.client.force_authenticate(self.admin)
         self.assertEqual(self.client.delete(f"/api/liquidaciones/{pk}/").status_code, 204)
 
     def test_no_se_edita_una_liquidacion_guardada(self):

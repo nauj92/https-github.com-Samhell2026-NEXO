@@ -4,6 +4,7 @@ import api from "../api";
 import { mensajeError } from "../utils/errores";
 import Layout from "../components/Layout";
 import SelectorDespacho from "../components/SelectorDespacho";
+import { usePermisos } from "../utils/permisos";
 
 const ESTILO_PLAZO = (dias) =>
   dias == null ? {} : dias < 0 ? { color: "#c73a3a", fontWeight: 700 } : dias <= 3 ? { color: "#a8681a", fontWeight: 700 } : { color: "#1b8b5e" };
@@ -26,10 +27,14 @@ const estadoColors = {
 };
 
 export default function Expedientes() {
+  const permiso = usePermisos("expedientes");
+  const permDocs = usePermisos("documentos");
+  const permAgenda = usePermisos("agenda");
   const [expedientes, setExpedientes] = useState([]);
   const [juzgados, setJuzgados] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
   const [clientes, setClientes] = useState([]);
+  const [equipo, setEquipo] = useState([]); // secretarias y escribientes que pueden apoyar un expediente
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -49,6 +54,7 @@ export default function Expedientes() {
     materia: "",
     estado: "activo",
     abogado_asignado: "",
+    colaboradores: [],
   });
 
   const cargarExpedientes = () => {
@@ -65,6 +71,7 @@ export default function Expedientes() {
     api.get("/juzgados/").then((response) => setJuzgados(response.data)).catch(() => {});
     api.get("/usuarios/").then((response) => setUsuarios(response.data)).catch(() => {});
     api.get("/clientes/").then((response) => setClientes(response.data)).catch(() => {});
+    api.get("/usuarios/?equipo=1").then((response) => setEquipo(response.data)).catch(() => {});
   }, []);
 
   const handleChange = (e) => {
@@ -72,7 +79,7 @@ export default function Expedientes() {
   };
 
   const handleNuevoClick = () => {
-    setForm({ numero: "", juzgado: "", cliente: "", demandante: "", demandado: "", materia: "", estado: "activo", abogado_asignado: "" });
+    setForm({ numero: "", juzgado: "", cliente: "", demandante: "", demandado: "", materia: "", estado: "activo", abogado_asignado: "", colaboradores: [] });
     setEditandoId(null);
     setFormError("");
     setMostrarForm(true);
@@ -88,6 +95,7 @@ export default function Expedientes() {
       materia: exp.materia,
       estado: exp.estado,
       abogado_asignado: exp.abogado_asignado || "",
+      colaboradores: exp.colaboradores || [],
     });
     setEditandoId(exp.id);
     setFormError("");
@@ -100,6 +108,9 @@ export default function Expedientes() {
     setFormError("");
   };
 
+  const puedeDefinirEquipo = permiso.perfil?.rol !== "secretario_juridico";
+  const esSecretaria = permiso.perfil?.rol === "secretario_juridico";
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError("");
@@ -111,6 +122,9 @@ export default function Expedientes() {
         cliente: form.cliente || null,
         abogado_asignado: form.abogado_asignado || undefined,
       };
+      // La secretaria no define el equipo de apoyo: no se envía para no chocar con su restricción
+      if (puedeDefinirEquipo) payload.colaboradores = form.colaboradores;
+      else delete payload.colaboradores;
       if (editandoId) {
         await api.patch(`/expedientes/${editandoId}/`, payload);
       } else {
@@ -118,7 +132,7 @@ export default function Expedientes() {
       }
       setMostrarForm(false);
       setEditandoId(null);
-      setForm({ numero: "", juzgado: "", cliente: "", demandante: "", demandado: "", materia: "", estado: "activo", abogado_asignado: "" });
+      setForm({ numero: "", juzgado: "", cliente: "", demandante: "", demandado: "", materia: "", estado: "activo", abogado_asignado: "", colaboradores: [] });
       cargarExpedientes();
     } catch (err) {
       setFormError(mensajeError(err, "No se pudo guardar el expediente."));
@@ -314,7 +328,7 @@ export default function Expedientes() {
               />
             </div>
 
-            <button
+            {permiso.crear && <button
               onClick={handleNuevoClick}
               style={{
                 background: "#0a1a2b",
@@ -328,7 +342,7 @@ export default function Expedientes() {
               }}
             >
               + Nuevo Caso
-            </button>
+            </button>}
           </div>
         </header>
 
@@ -377,8 +391,8 @@ export default function Expedientes() {
                           <td style={tdStyle}>{exp.abogado_asignado_nombre || "Sin asignar"}</td>
                           <td style={tdStyle}>
                             <span onClick={() => abrirDetalle(exp)} style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}>Ver</span>
-                            <span onClick={() => handleEditar(exp)} style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}>Editar</span>
-                            <span onClick={() => handleEliminar(exp.id)} style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}>Eliminar</span>
+                            {permiso.editar && <span onClick={() => handleEditar(exp)} style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}>Editar</span>}
+                            {permiso.eliminar && <span onClick={() => handleEliminar(exp.id)} style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}>Eliminar</span>}
                           </td>
                         </tr>
                       );
@@ -452,13 +466,35 @@ export default function Expedientes() {
               </Campo>
 
               <Campo label="Abogado Asignado">
-                <select name="abogado_asignado" value={form.abogado_asignado} onChange={handleChange} style={inputStyle}>
-                  <option value="">Sin asignar (se asigna a ti por defecto)</option>
+                <select name="abogado_asignado" value={form.abogado_asignado} onChange={handleChange} style={inputStyle} disabled={esSecretaria && !!editandoId} required={permiso.perfil?.rol !== "abogado"}>
+                  <option value="">{permiso.perfil?.rol === "abogado" ? "Sin asignar (se asigna a ti por defecto)" : "Seleccione el abogado responsable…"}</option>
                   {usuarios.map((u) => (
                     <option key={u.id} value={u.id}>{u.nombre_completo}</option>
                   ))}
                 </select>
               </Campo>
+
+              {puedeDefinirEquipo && equipo.length > 0 && (
+                <Campo label="Equipo de apoyo (secretarias y escribientes que verán este expediente)">
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxHeight: "120px", overflowY: "auto", border: "1px solid #d0d9e3", borderRadius: "8px", padding: "8px" }}>
+                    {equipo.map((u) => (
+                      <label key={u.id} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px" }}>
+                        <input
+                          type="checkbox"
+                          checked={form.colaboradores.includes(u.id)}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              colaboradores: e.target.checked ? [...form.colaboradores, u.id] : form.colaboradores.filter((id) => id !== u.id),
+                            })
+                          }
+                        />
+                        {u.nombre_completo} · {u.rol === "escribiente" ? "Escribiente" : "Secretaria"}
+                      </label>
+                    ))}
+                  </div>
+                </Campo>
+              )}
 
               <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
                 <button type="button" onClick={handleCerrarModal} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #d0d9e3", background: "white", cursor: "pointer" }}>
@@ -528,17 +564,17 @@ export default function Expedientes() {
                     </span>
                   </div>
                   <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <select value={etapa.estado} onChange={(e) => handleCambiarEstadoEtapa(etapa.id, e.target.value)} style={{ fontSize: "12px", padding: "3px 6px", borderRadius: "6px", border: "1px solid #d0d9e3" }}>
+                    <select value={etapa.estado} disabled={!permAgenda.editar} onChange={(e) => handleCambiarEstadoEtapa(etapa.id, e.target.value)} style={{ fontSize: "12px", padding: "3px 6px", borderRadius: "6px", border: "1px solid #d0d9e3" }}>
                       <option value="pendiente">Pendiente</option>
                       <option value="en_curso">En curso</option>
                       <option value="completada">Completada</option>
                     </select>
-                    <button type="button" onClick={() => handleEliminarEtapa(etapa)} title="Eliminar etapa" style={{ padding: "3px 8px", borderRadius: "6px", border: "none", background: "#fde8e8", color: "#c73a3a", cursor: "pointer", fontSize: "12px" }}>Eliminar</button>
+                    {permAgenda.eliminar && <button type="button" onClick={() => handleEliminarEtapa(etapa)} title="Eliminar etapa" style={{ padding: "3px 8px", borderRadius: "6px", border: "none", background: "#fde8e8", color: "#c73a3a", cursor: "pointer", fontSize: "12px" }}>Eliminar</button>}
                   </span>
                 </div>
               ))}
 
-              <form onSubmit={handleAgregarEtapa} style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
+              {permAgenda.crear && <form onSubmit={handleAgregarEtapa} style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
                 <input
                   type="text"
                   placeholder="Nombre de la etapa"
@@ -568,7 +604,7 @@ export default function Expedientes() {
                 <button type="submit" disabled={guardandoEtapa} style={{ padding: "8px 14px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer", fontSize: "13px" }}>
                   +
                 </button>
-              </form>
+              </form>}
               <p style={{ fontSize: "11px", color: "#6b7f96", marginTop: "6px" }}>
                 Los días hábiles excluyen sábados, domingos y festivos de Colombia. No considera vacancia judicial ni suspensiones de términos: verifique siempre el plazo con el despacho.
               </p>
@@ -587,14 +623,14 @@ export default function Expedientes() {
                   </span>
                   <span style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
                     <button type="button" onClick={() => handleDescargarDocumento(d)} style={{ padding: "4px 10px", borderRadius: "6px", border: "1px solid #d0d9e3", background: "white", cursor: "pointer" }}>Descargar</button>
-                    <button type="button" onClick={() => handleEliminarDocumento(d)} style={{ padding: "4px 10px", borderRadius: "6px", border: "none", background: "#fde8e8", color: "#c73a3a", cursor: "pointer" }}>Eliminar</button>
+                    {permDocs.eliminar && <button type="button" onClick={() => handleEliminarDocumento(d)} style={{ padding: "4px 10px", borderRadius: "6px", border: "none", background: "#fde8e8", color: "#c73a3a", cursor: "pointer" }}>Eliminar</button>}
                   </span>
                 </div>
               ))}
-              <label style={{ display: "inline-block", marginTop: "10px", padding: "8px 14px", borderRadius: "8px", background: "#0a1a2b", color: "white", cursor: "pointer", fontSize: "13px", opacity: subiendo ? 0.6 : 1 }}>
+              {permDocs.crear && <label style={{ display: "inline-block", marginTop: "10px", padding: "8px 14px", borderRadius: "8px", background: "#0a1a2b", color: "white", cursor: "pointer", fontSize: "13px", opacity: subiendo ? 0.6 : 1 }}>
                 {subiendo ? "Subiendo..." : "+ Adjuntar documento"}
                 <input type="file" onChange={handleSubirDocumento} disabled={subiendo} style={{ display: "none" }} accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt" />
-              </label>
+              </label>}
               <p style={{ fontSize: "11px", color: "#6b7f96" }}>PDF, Word, Excel, imágenes o texto. Máximo 5 MB (25 MB si el despacho activó el almacenamiento externo).</p>
 
               <h4 style={{ marginTop: "24px", marginBottom: "10px" }}>🕑 Historial de cambios</h4>
@@ -654,4 +690,4 @@ const inputStyle = {
 };
 
 const thStyle = { textAlign: "left", padding: "14px 16px", color: "#6b7f96", fontWeight: 600, borderBottom: "1px solid #e9edf2" };
-const tdStyle = { padding: "14px 16px" };
+const tdStyle = { padding: "14px 16px" };

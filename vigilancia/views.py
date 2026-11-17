@@ -11,6 +11,13 @@ from .serializers import ActuacionSerializer, EnlaceSerializer, VigilanciaSerial
 
 class VigilanciaViewSet(viewsets.ModelViewSet):
     serializer_class = VigilanciaSerializer
+    modulo = "vigilancia"
+    permisos_accion = {
+        "actuaciones": {"GET": "V", "POST": "C"},
+        "actuacion": "E",
+        "enlaces": {"GET": "V", "POST": "C"},
+        "enlace": "E",
+    }
 
     def get_queryset(self):
         return (

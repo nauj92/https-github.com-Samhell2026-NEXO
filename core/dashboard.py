@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 from acuerdos.models import AcuerdoPago
 from audiencias.models import Audiencia
 from clientes.models import Cliente
-from core.permisos import es_directivo, expedientes_visibles
+from core.permisos import es_administrador, es_directivo, expedientes_visibles
 from core.plazos import sumar_dias_habiles
 from demandas.models import ContestacionDemanda, Demanda
 from expedientes.models import EtapaProceso
@@ -53,6 +53,8 @@ def _alcance(qs, usuario):
 
 class DashboardResumenView(APIView):
     """GET /api/dashboard/resumen/"""
+
+    modulo = "reportes"
 
     def get(self, request):
         usuario = request.user
@@ -183,6 +185,7 @@ class DashboardResumenView(APIView):
             "totales": totales,
             "casos_por_rama": casos_por_rama,
             "es_directivo": directivo,
+            "es_administrador": es_administrador(usuario),
             "expedientes": {
                 "activos": por_estado.get("activo", 0),
                 "tramite": por_estado.get("tramite", 0),

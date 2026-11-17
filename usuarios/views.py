@@ -16,7 +16,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
-from core.permisos import EsAdministrador, EsDirectivo
+from core.permisos import EsAdministrador
 
 from .correos import enviar_bienvenida
 from .serializers import (
@@ -85,18 +85,18 @@ class AutorizarDatosView(APIView):
 
 
 class UsuarioListView(APIView):
-    """Lista simple de usuarios activos, para asignar abogados a los expedientes."""
+    """Lista simple de abogados activos, para asignar el responsable de expedientes y escritos."""
 
     def get(self, request):
-        usuarios = Usuario.objects.filter(
-            is_active=True, rol__in=["abogado", "socio_director", "administrador"]
-        ).order_by("first_name", "username")
+        # Por defecto, los abogados; con ?equipo=1, las secretarias y escribientes que pueden apoyar un expediente.
+        roles = ["secretario_juridico", "escribiente"] if request.query_params.get("equipo") == "1" else ["abogado"]
+        usuarios = Usuario.objects.filter(is_active=True, rol__in=roles).order_by("first_name", "username")
         serializer = UsuarioSimpleSerializer(usuarios, many=True)
         return Response(serializer.data)
 
 
 class UsuarioAdminViewSet(viewsets.ModelViewSet):
-    """Gestión de usuarios. Administradores y socios consultan; solo el administrador crea y modifica.
+    """Gestión de usuarios y roles: solo el administrador.
 
     No se borran: se desactivan. Al crear una cuenta se envía un correo de bienvenida.
     """
@@ -106,8 +106,6 @@ class UsuarioAdminViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "patch", "head", "options"]
 
     def get_permissions(self):
-        if self.action in ("list", "retrieve"):
-            return [EsDirectivo()]
         return [EsAdministrador()]
 
     def create(self, request, *args, **kwargs):

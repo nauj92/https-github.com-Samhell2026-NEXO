@@ -140,10 +140,7 @@ class DemandaSerializer(serializers.ModelSerializer):
         return value
 
     def validate_abogado_responsable(self, value):
-        request = self.context.get("request")
-        if value is not None and request is not None and not es_directivo(request.user) and value != request.user:
-            raise serializers.ValidationError("Solo un administrador o socio puede asignar la demanda a otro abogado.")
-        return value
+        return _validar_abogado(self.context.get("request"), value)
 
     @staticmethod
     def _documento(tipo, numero, etiqueta):
@@ -228,8 +225,13 @@ def _nombre(usuario):
 
 
 def _validar_abogado(request, value):
-    if value is not None and request is not None and not es_directivo(request.user) and value != request.user:
-        raise serializers.ValidationError("Solo un administrador o socio puede asignarlo a otro abogado.")
+    """El responsable debe ser un abogado. Un abogado (no socio) solo se asigna a sí mismo."""
+    if value is None or request is None:
+        return value
+    if value.rol != "abogado":
+        raise serializers.ValidationError("El responsable debe ser un usuario con rol Abogado.")
+    if request.user.rol == "abogado" and not es_directivo(request.user) and value != request.user:
+        raise serializers.ValidationError("Solo un socio o un administrador puede asignarlo a otro abogado.")
     return value
 
 

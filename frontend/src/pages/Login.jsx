@@ -4,6 +4,7 @@ import { Scale, User, Lock, Eye, EyeOff } from "lucide-react";
 import BotonTema from "../components/BotonTema";
 import api from "../api";
 import { mensajeError } from "../utils/errores";
+import { rutaInicial } from "../utils/permisos";
 
 const imagenesFondo = [
   "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=1920",
@@ -48,7 +49,7 @@ export default function Login() {
       try {
         const { data: perfil } = await api.get("/perfil/");
         if (perfil.debe_cambiar_password || perfil.autorizacion_datos_pendiente) destino = "/primer-ingreso";
-        else if (perfil.rol === "cliente") destino = "/configuracion";
+        else destino = rutaInicial(perfil);
       } catch {
         /* si el perfil no carga, la pantalla de destino lo vuelve a intentar */
       }

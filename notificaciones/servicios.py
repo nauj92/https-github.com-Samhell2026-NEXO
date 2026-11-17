@@ -23,7 +23,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from audiencias.models import Audiencia
-from core.permisos import es_directivo
+from core.permisos import facturas_visibles, puede
 from demandas.models import Citacion, ContestacionDemanda, Demanda
 from demandas.serializers import CitacionSerializer, ContestacionSerializer, limite_subsanacion
 from expedientes.models import EtapaProceso, Expediente
@@ -160,9 +160,9 @@ def generar_para_usuario(usuario, hoy=None):
                 usuario, Notificacion.Tipo.GENERAL, mensaje, f"vigilancia:{vig.pk}:{vig.fecha_referencia()}"
             )
 
-    # Facturas: solo para administradores y socios
-    if es_directivo(usuario):
-        facturas = Factura.objects.filter(
+    # Facturas: para quienes pueden consultar finanzas, solo las de sus expedientes
+    if puede(usuario, "finanzas", "V") and getattr(usuario, "rol", None) != "cliente":
+        facturas = facturas_visibles(usuario).filter(
             estado__in=[Factura.Estado.PENDIENTE, Factura.Estado.VENCIDA],
             fecha_vencimiento__isnull=False,
             fecha_vencimiento__lte=limite,

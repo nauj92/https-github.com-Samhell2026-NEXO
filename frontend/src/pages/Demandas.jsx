@@ -10,6 +10,7 @@ import { mensajeError } from "../utils/errores";
 import { fecha, limpiar, pesos } from "../utils/formato";
 import Borrador from "../components/Borrador";
 import { Encabezado, Modal, Campo, Dato, Chip, Etiqueta, inputStyle, thStyle, tdStyle, botonSecundario, enlace, mensajeErrorEstilo } from "../components/ui";
+import { usePermisos } from "../utils/permisos";
 
 const ESTADOS = {
   elaboracion: { label: "En elaboración", bg: "#e9ecf0", color: "#5b6f84" },
@@ -97,7 +98,8 @@ export default function Demandas() {
   const [juzgados, setJuzgados] = useState([]);
   const [expedientes, setExpedientes] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
-  const [perfil, setPerfil] = useState(null);
+  const permiso = usePermisos("documentos");
+  const perfil = permiso.perfil;
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState("");
@@ -124,7 +126,6 @@ export default function Demandas() {
     api.get("/juzgados/").then((r) => setJuzgados(r.data)).catch(() => {});
     api.get("/expedientes/").then((r) => setExpedientes(r.data)).catch(() => {});
     api.get("/usuarios/").then((r) => setUsuarios(r.data)).catch(() => {});
-    api.get("/perfil/").then((r) => setPerfil(r.data)).catch(() => {});
   }, []);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -239,7 +240,7 @@ export default function Demandas() {
   return (
     <Layout>
       <div style={{ minHeight: "100vh", background: "#f4f7fb", fontFamily: "sans-serif" }}>
-        <Encabezado Icono={FileText} titulo="A1 · Elaboración de demanda" busqueda={busqueda} setBusqueda={setBusqueda} placeholder="Buscar demanda..." textoBoton="+ Nueva demanda" onNuevo={abrirNueva} />
+        <Encabezado Icono={FileText} titulo="A1 · Elaboración de demanda" busqueda={busqueda} setBusqueda={setBusqueda} placeholder="Buscar demanda..." textoBoton="+ Nueva demanda" onNuevo={permiso.crear ? abrirNueva : undefined} />
         <main style={{ padding: "32px" }}>
           {error && <p style={{ color: "#c73a3a" }}>{error}</p>}
           {cargando && <p>Cargando...</p>}
@@ -283,8 +284,8 @@ export default function Demandas() {
                           <td style={tdStyle}>{d.abogado_nombre || "—"}</td>
                           <td style={tdStyle}>
                             <button style={enlace()} onClick={() => setDetalle(d)}>Ver</button>
-                            <button style={enlace("#a8681a")} onClick={() => abrirEditar(d)}>Editar</button>
-                            <button style={enlace("#c73a3a")} onClick={() => eliminar(d)}>Eliminar</button>
+                            {permiso.editar && <button style={enlace("#a8681a")} onClick={() => abrirEditar(d)}>Editar</button>}
+                            {permiso.eliminar && <button style={enlace("#c73a3a")} onClick={() => eliminar(d)}>Eliminar</button>}
                           </td>
                         </tr>
                       );
@@ -348,10 +349,10 @@ export default function Demandas() {
                   )}
                 </div>
               )}
-              {perfil?.es_directivo && (
+              {perfil && (perfil.rol !== "abogado" || perfil.es_socio) && (
                 <Campo label="Abogado responsable en el sistema">
                   <select value={form.abogado_responsable} onChange={(e) => (e.target.value === "__nuevo__" ? abrirAbogados() : set("abogado_responsable")(e))} style={inputStyle}>
-                    <option value="">Yo (por defecto)</option>
+                    <option value="">{perfil?.rol === "abogado" ? "Yo (por defecto)" : "Seleccione el abogado…"}</option>
                     {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre_completo}</option>)}
                     <option value="__nuevo__">+ Crear nuevo abogado…</option>
                   </select>

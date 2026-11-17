@@ -1,7 +1,7 @@
 from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from core.permisos import es_directivo, expedientes_visibles
@@ -15,6 +15,8 @@ class AlcanceAbogadoMixin:
     """Cada abogado ve lo que tiene a su cargo o lo de sus expedientes; administrador y socio ven todo."""
 
     relaciones = ()
+    modulo = "documentos"  # demandas, contestaciones y citaciones son escritos del despacho
+    permisos_accion = {"generar_borrador": "V"}
 
     def get_queryset(self):
         qs = self.queryset_base().select_related(*self.relaciones)
@@ -24,17 +26,13 @@ class AlcanceAbogadoMixin:
         return qs.filter(Q(abogado_responsable=usuario) | Q(expediente__in=expedientes_visibles(usuario)))
 
     def perform_create(self, serializer):
-        # Si no se indica responsable, queda a cargo de quien lo registra
+        # Si no se indica responsable, queda a cargo de quien lo registra (si es abogado)
         if serializer.validated_data.get("abogado_responsable") is None:
+            if self.request.user.rol != "abogado":
+                raise ValidationError({"abogado_responsable": "Indique el abogado responsable."})
             serializer.save(abogado_responsable=self.request.user)
         else:
             serializer.save()
-
-    def perform_destroy(self, instance):
-        usuario = self.request.user
-        if not (es_directivo(usuario) or instance.abogado_responsable_id == usuario.pk):
-            raise PermissionDenied("Solo el abogado responsable o un directivo puede eliminarlo.")
-        instance.delete()
 
 
 class DemandaViewSet(AlcanceAbogadoMixin, viewsets.ModelViewSet):

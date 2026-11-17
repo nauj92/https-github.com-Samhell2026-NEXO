@@ -5,8 +5,10 @@ import { mensajeError } from "../utils/errores";
 import Layout from "../components/Layout";
 import { EnlaceExpedientes } from "../components/ui";
 import CampoFechaHora from "../components/CampoFechaHora";
+import { usePermisos } from "../utils/permisos";
 
 export default function Audiencias() {
+  const permiso = usePermisos("agenda");
   const [audiencias, setAudiencias] = useState([]);
   const [expedientes, setExpedientes] = useState([]);
   const [error, setError] = useState("");
@@ -245,8 +247,8 @@ export default function Audiencias() {
                       <td style={tdStyle}>{aud.lugar}</td>
                       <td style={tdStyle}>
                         <span onClick={() => setDetalle(aud)} style={{ color: "#1f3b57", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}>Ver</span>
-                        <span onClick={() => handleEditar(aud)} style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}>Editar</span>
-                        <span onClick={() => handleEliminar(aud.id)} style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}>Eliminar</span>
+                        {permiso.editar && <span onClick={() => handleEditar(aud)} style={{ color: "#a8681a", fontWeight: 600, cursor: "pointer", textDecoration: "underline", marginRight: "12px" }}>Editar</span>}
+                        {permiso.eliminar && <span onClick={() => handleEliminar(aud.id)} style={{ color: "#c73a3a", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}>Eliminar</span>}
                       </td>
                     </tr>
                   ))}
@@ -382,4 +384,4 @@ const inputStyle = {
 };
 
 const thStyle = { textAlign: "left", padding: "14px 16px", color: "#6b7f96", fontWeight: 600, borderBottom: "1px solid #e9edf2" };
-const tdStyle = { padding: "14px 16px" };
+const tdStyle = { padding: "14px 16px" };

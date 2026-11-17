@@ -4,14 +4,17 @@ from django.db import models
 
 class Usuario(AbstractUser):
     class Rol(models.TextChoices):
+        # Orden de permisos: Cliente < Dependiente < Escribiente < Secretaria < Abogado < Administrador
         ADMINISTRADOR = "administrador", "Administrador"
-        SOCIO_DIRECTOR = "socio_director", "Socio Director"
         ABOGADO = "abogado", "Abogado"
-        SECRETARIO = "secretario_juridico", "Secretario(a) Jurídico"
+        SECRETARIO = "secretario_juridico", "Secretaria"
         ESCRIBIENTE = "escribiente", "Escribiente"
+        DEPENDIENTE = "dependiente", "Dependiente"
         CLIENTE = "cliente", "Cliente"
 
     rol = models.CharField(max_length=30, choices=Rol.choices, default=Rol.ABOGADO)
+    # El socio es un abogado que ve todos los expedientes del despacho (no es un rol aparte).
+    es_socio = models.BooleanField("socio", default=False, help_text="Solo para abogados: ve todos los expedientes.")
     telefono = models.CharField(max_length=20, blank=True)
     cedula = models.CharField("cédula", max_length=12, blank=True)
     tarjeta_profesional = models.CharField("tarjeta profesional", max_length=15, blank=True)

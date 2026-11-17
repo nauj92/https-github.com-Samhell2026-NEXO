@@ -148,7 +148,7 @@ export default function Dashboard() {
               <Tarjeta titulo="Demandas" to="/demandas" valor={d.totales.demandas} Icono={FileText} color="#2f5d8a" />
               <Tarjeta titulo="Contestaciones" to="/contestaciones" valor={d.totales.contestaciones} Icono={FileSignature} alerta={d.contestaciones_vencidas > 0} color="#6b5ca5" />
               <Tarjeta titulo="Clientes" to="/clientes" valor={d.totales.clientes} Icono={Contact} color="#2a8fa6" />
-              {d.es_directivo && <Tarjeta titulo="Abogados" to="/abogados" valor={d.totales.abogados} Icono={Users} color="#d4a743" />}
+              {d.es_administrador && <Tarjeta titulo="Abogados" to="/abogados" valor={d.totales.abogados} Icono={Users} color="#d4a743" />}
               <Tarjeta titulo="Audiencias" to="/audiencias" valor={d.totales.audiencias} Icono={CalendarDays} color="#2e8b6e" />
               <Tarjeta titulo="Acuerdos de pago" to="/acuerdos" valor={d.totales.acuerdos} Icono={Wallet} alerta={d.acuerdos_pago.en_mora > 0} color="#8a7a2b" />
               <Tarjeta titulo="Diligencias judiciales" to="/audiencias" valor={d.totales.diligencias} Icono={Gavel} color="#d9822b" />

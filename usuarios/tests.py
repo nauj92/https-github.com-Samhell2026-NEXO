@@ -120,10 +120,10 @@ class GestionUsuariosTests(APITestCase):
 
     def test_cambiar_rol_y_desactivar_a_otro_usuario(self):
         self.client.force_authenticate(self.admin)
-        r = self.client.patch(f"/api/gestion-usuarios/{self.abogado.pk}/", {"rol": "socio_director", "is_active": False}, format="json")
+        r = self.client.patch(f"/api/gestion-usuarios/{self.abogado.pk}/", {"rol": "secretario_juridico", "is_active": False}, format="json")
         self.assertEqual(r.status_code, 200, r.data)
         self.abogado.refresh_from_db()
-        self.assertEqual(self.abogado.rol, "socio_director")
+        self.assertEqual(self.abogado.rol, "secretario_juridico")
         self.assertFalse(self.abogado.is_active)
 
     def test_el_admin_no_puede_desactivarse_ni_cambiarse_el_rol(self):
@@ -287,7 +287,7 @@ class PrimerIngresoTests(APITestCase):
 
     def setUp(self):
         self.admin = crear_usuario("admin1", "administrador")
-        self.socio = crear_usuario("socio1", "socio_director")
+        self.socio = crear_usuario("socio1", "abogado", es_socio=True)
         self.abogado = crear_usuario("abog1", "abogado")
 
     def datos(self, **extra):
@@ -317,9 +317,9 @@ class PrimerIngresoTests(APITestCase):
             self.assertEqual(r.status_code, 403, usuario.username)
         self.assertFalse(Usuario.objects.filter(username="nuevo1").exists())
 
-    def test_el_socio_consulta_pero_no_modifica(self):
+    def test_el_socio_no_gestiona_usuarios(self):
         self.client.force_authenticate(self.socio)
-        self.assertEqual(self.client.get("/api/gestion-usuarios/").status_code, 200)
+        self.assertEqual(self.client.get("/api/gestion-usuarios/").status_code, 403)
         r = self.client.patch(f"/api/gestion-usuarios/{self.abogado.pk}/", {"is_active": False}, format="json")
         self.assertEqual(r.status_code, 403)
         self.assertEqual(self.client.post(f"/api/gestion-usuarios/{self.abogado.pk}/desbloquear/").status_code, 403)
@@ -430,4 +430,7 @@ class PrimerIngresoTests(APITestCase):
         self.client.force_authenticate(self.admin)
         self.assertTrue(self.client.get("/api/perfil/").data["es_administrador"])
         self.client.force_authenticate(self.socio)
-        self.assertFalse(self.client.get("/api/perfil/").data["es_administrador"])
+        perfil = self.client.get("/api/perfil/").data
+        self.assertFalse(perfil["es_administrador"])
+        self.assertTrue(perfil["es_socio"])
+        self.assertIn("expedientes", perfil["permisos"])

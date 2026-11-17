@@ -8,6 +8,7 @@ import {
   Encabezado, EnlaceExpedientes, Modal, Campo, Dato, Etiqueta, inputStyle, thStyle, tdStyle,
   botonPrimario, botonSecundario, enlace, mensajeErrorEstilo,
 } from "../components/ui";
+import { usePermisos } from "../utils/permisos";
 
 const ESTADOS = {
   vigente: { texto: "Vigente", bg: "#e3effb", color: "#1f5a99" },
@@ -27,6 +28,7 @@ const FORM_VACIO = {
 };
 
 export default function Acuerdos() {
+  const permiso = usePermisos("finanzas");
   const [acuerdos, setAcuerdos] = useState([]);
   const [expedientes, setExpedientes] = useState([]);
   const [error, setError] = useState("");
@@ -145,7 +147,7 @@ export default function Acuerdos() {
   return (
     <Layout>
       <div style={{ minHeight: "100vh", background: "#f4f7fb", fontFamily: "sans-serif" }}>
-        <Encabezado Icono={Wallet} titulo="Acuerdos de pago" busqueda={busqueda} setBusqueda={setBusqueda} placeholder="Buscar..." textoBoton="+ Nuevo acuerdo" onNuevo={abrirNuevo} />
+        <Encabezado Icono={Wallet} titulo="Acuerdos de pago" busqueda={busqueda} setBusqueda={setBusqueda} placeholder="Buscar..." textoBoton="+ Nuevo acuerdo" onNuevo={permiso.crear ? abrirNuevo : undefined} />
 
         <main style={{ padding: "32px" }}>
           <EnlaceExpedientes />
@@ -190,13 +192,13 @@ export default function Acuerdos() {
                           <td style={tdStyle}><Etiqueta texto={e.texto} bg={e.bg} color={e.color} /></td>
                           <td style={tdStyle}>
                             <button type="button" onClick={() => { setDetalleId(a.id); setErrorDetalle(""); setFechaPago(hoyISO()); }} style={enlace()}>Ver cuotas</button>
-                            <button type="button" onClick={() => abrirEditar(a)} style={enlace("#a8681a")}>Editar</button>
-                            {a.estado === "cancelado" ? (
+                            {permiso.editar && <button type="button" onClick={() => abrirEditar(a)} style={enlace("#a8681a")}>Editar</button>}
+                            {permiso.editar && (a.estado === "cancelado" ? (
                               <button type="button" onClick={() => cambiarEstado(a, "vigente")} style={enlace("#1b8b5e")}>Reactivar</button>
                             ) : (
                               <button type="button" onClick={() => cambiarEstado(a, "cancelado")} style={enlace("#6b7f96")}>Cancelar</button>
-                            )}
-                            <button type="button" onClick={() => eliminar(a)} style={enlace("#c73a3a")}>Eliminar</button>
+                            ))}
+                            {permiso.eliminar && <button type="button" onClick={() => eliminar(a)} style={enlace("#c73a3a")}>Eliminar</button>}
                           </td>
                         </tr>
                       );
@@ -297,7 +299,7 @@ export default function Acuerdos() {
                     Vence {fecha(c.fecha_vencimiento)}{c.en_mora ? " · en mora" : ""}{c.pagada ? ` · pagada el ${fecha(c.fecha_pago)}` : ""}
                   </div>
                 </span>
-                {detalle.estado !== "cancelado" && (c.pagada ? (
+                {permiso.editar && detalle.estado !== "cancelado" && (c.pagada ? (
                   <button type="button" onClick={() => movimientoCuota("reabrir", c)} style={{ padding: "4px 10px", borderRadius: "6px", border: "none", background: "#eceff3", color: "#51667d", cursor: "pointer" }}>Deshacer pago</button>
                 ) : (
                   <button type="button" onClick={() => movimientoCuota("pagar", c)} style={{ padding: "4px 10px", borderRadius: "6px", border: "none", background: "#e0f3ea", color: "#1b8b5e", cursor: "pointer", fontWeight: 600 }}>Registrar pago</button>

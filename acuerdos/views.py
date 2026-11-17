@@ -19,6 +19,8 @@ def pesos(valor):
 
 class AcuerdoPagoViewSet(viewsets.ModelViewSet):
     serializer_class = AcuerdoPagoSerializer
+    modulo = "finanzas"
+    permisos_accion = {"pagar": "E", "reabrir": "E"}
 
     def get_queryset(self):
         qs = (

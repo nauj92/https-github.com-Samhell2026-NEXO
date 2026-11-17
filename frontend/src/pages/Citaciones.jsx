@@ -5,6 +5,7 @@ import Layout from "../components/Layout";
 import { mensajeError } from "../utils/errores";
 import { fecha } from "../utils/formato";
 import { Encabezado, Modal, Campo, Dato, Chip, Etiqueta, inputStyle, thStyle, tdStyle, botonSecundario, enlace, mensajeErrorEstilo } from "../components/ui";
+import { usePermisos } from "../utils/permisos";
 
 const ESTADOS = {
   pendiente: { label: "Pendiente de envío", bg: "#e9ecf0", color: "#5b6f84" },
@@ -42,7 +43,8 @@ export default function Citaciones() {
   const [demandas, setDemandas] = useState([]);
   const [expedientes, setExpedientes] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
-  const [perfil, setPerfil] = useState(null);
+  const permiso = usePermisos("documentos");
+  const perfil = permiso.perfil;
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState("");
@@ -67,7 +69,6 @@ export default function Citaciones() {
     api.get("/demandas/").then((r) => setDemandas(r.data)).catch(() => {});
     api.get("/expedientes/").then((r) => setExpedientes(r.data)).catch(() => {});
     api.get("/usuarios/").then((r) => setUsuarios(r.data)).catch(() => {});
-    api.get("/perfil/").then((r) => setPerfil(r.data)).catch(() => {});
   }, []);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -126,7 +127,7 @@ export default function Citaciones() {
   return (
     <Layout>
       <div style={{ minHeight: "100vh", background: "#f4f7fb", fontFamily: "sans-serif" }}>
-        <Encabezado Icono={Send} titulo="Citación de demanda" busqueda={busqueda} setBusqueda={setBusqueda} placeholder="Buscar citación..." textoBoton="+ Nueva citación" onNuevo={abrirNueva} />
+        <Encabezado Icono={Send} titulo="Citación de demanda" busqueda={busqueda} setBusqueda={setBusqueda} placeholder="Buscar citación..." textoBoton="+ Nueva citación" onNuevo={permiso.crear ? abrirNueva : undefined} />
         <main style={{ padding: "32px" }}>
           <p style={{ color: "#6b7f96", fontSize: "13px", marginTop: 0 }}>
             Control de la notificación al demandado: citación para notificación personal (art. 291 CGP) y, si no comparece, notificación por aviso (art. 292 CGP).
@@ -174,8 +175,8 @@ export default function Citaciones() {
                           <td style={tdStyle}>{c.abogado_nombre || "—"}</td>
                           <td style={tdStyle}>
                             <button style={enlace()} onClick={() => setDetalle(c)}>Ver</button>
-                            <button style={enlace("#a8681a")} onClick={() => abrirEditar(c)}>Editar</button>
-                            <button style={enlace("#c73a3a")} onClick={() => eliminar(c)}>Eliminar</button>
+                            {permiso.editar && <button style={enlace("#a8681a")} onClick={() => abrirEditar(c)}>Editar</button>}
+                            {permiso.eliminar && <button style={enlace("#c73a3a")} onClick={() => eliminar(c)}>Eliminar</button>}
                           </td>
                         </tr>
                       );
@@ -236,10 +237,10 @@ export default function Citaciones() {
                 {expedientes.map((x) => <option key={x.id} value={x.id}>{x.numero} · {x.demandante}</option>)}
               </select>
             </Campo>
-            {perfil?.es_directivo && (
+            {perfil && (perfil.rol !== "abogado" || perfil.es_socio) && (
               <Campo label="Abogado responsable">
                 <select value={form.abogado_responsable} onChange={set("abogado_responsable")} style={inputStyle}>
-                  <option value="">Yo (por defecto)</option>
+                  <option value="">{perfil?.rol === "abogado" ? "Yo (por defecto)" : "Seleccione el abogado…"}</option>
                   {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre_completo}</option>)}
                 </select>
               </Campo>

@@ -5,6 +5,7 @@ import Layout from "../components/Layout";
 import { mensajeError } from "../utils/errores";
 import { fecha } from "../utils/formato";
 import { EnlaceExpedientes, Encabezado, Modal, Campo, Chip, Etiqueta, inputStyle, thStyle, tdStyle, botonSecundario, enlace, mensajeErrorEstilo } from "../components/ui";
+import { usePermisos } from "../utils/permisos";
 
 const hoyISO = () => {
   const d = new Date();
@@ -12,6 +13,7 @@ const hoyISO = () => {
 };
 
 export default function Vigilancia() {
+  const permiso = usePermisos("vigilancia");
   const [vigilancias, setVigilancias] = useState([]);
   const [expedientes, setExpedientes] = useState([]);
   const [error, setError] = useState("");
@@ -170,7 +172,7 @@ export default function Vigilancia() {
   return (
     <Layout>
       <div style={{ minHeight: "100vh", background: "#f4f7fb", fontFamily: "sans-serif" }}>
-        <Encabezado Icono={Eye} titulo="Vigilancia Judicial" busqueda={busqueda} setBusqueda={setBusqueda} placeholder="Buscar proceso..." textoBoton="+ Vigilar proceso" onNuevo={abrirNuevo} />
+        <Encabezado Icono={Eye} titulo="Vigilancia Judicial" busqueda={busqueda} setBusqueda={setBusqueda} placeholder="Buscar proceso..." textoBoton="+ Vigilar proceso" onNuevo={permiso.crear ? abrirNuevo : undefined} />
         <main style={{ padding: "32px" }}>
           <p style={{ color: "#6b7f96", fontSize: "13px", marginTop: 0 }}>
             Ancle a cada proceso los enlaces que necesite (consulta de procesos, estados electrónicos, expediente digital) y registre las actuaciones que vaya conociendo; el sistema avisa cuando un proceso pasa demasiado tiempo sin movimiento. No se conecta a la Rama Judicial.
@@ -221,8 +223,8 @@ export default function Vigilancia() {
                         </td>
                         <td style={tdStyle}>
                           <button style={enlace()} onClick={() => abrirActuaciones(v)}>Enlaces ({v.total_enlaces ?? 0}) y actuaciones ({v.total_actuaciones})</button>
-                          <button style={enlace("#a8681a")} onClick={() => abrirEditar(v)}>Editar</button>
-                          <button style={enlace("#c73a3a")} onClick={() => eliminar(v)}>Quitar</button>
+                          {permiso.editar && <button style={enlace("#a8681a")} onClick={() => abrirEditar(v)}>Editar</button>}
+                          {permiso.eliminar && <button style={enlace("#c73a3a")} onClick={() => eliminar(v)}>Quitar</button>}
                         </td>
                       </tr>
                     ))}
@@ -304,7 +306,7 @@ export default function Vigilancia() {
                       {l.nota && <div style={{ color: "#6b7f96", fontSize: "12px" }}>{l.nota}</div>}
                       <div style={{ color: "#6b7f96", fontSize: "12px" }}>Anclado por {l.creado_por_nombre || "—"} · {fecha(l.creado_en)}</div>
                     </span>
-                    <button style={enlace("#c73a3a")} onClick={() => quitarEnlace(l)}>Quitar</button>
+                    {permiso.editar && <button style={enlace("#c73a3a")} onClick={() => quitarEnlace(l)}>Quitar</button>}
                   </div>
                 ))}
               </>
@@ -324,7 +326,7 @@ export default function Vigilancia() {
                   <strong>{fecha(a.fecha)}</strong> · {a.descripcion}
                   <div style={{ color: "#6b7f96", fontSize: "12px" }}>Registrada por {a.registrada_por_nombre || "—"}</div>
                 </span>
-                <button style={enlace("#c73a3a")} onClick={() => borrarActuacion(a)}>Eliminar</button>
+                {permiso.editar && <button style={enlace("#c73a3a")} onClick={() => borrarActuacion(a)}>Eliminar</button>}
               </div>
             ))}
             </>

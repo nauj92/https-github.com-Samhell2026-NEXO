@@ -25,17 +25,23 @@ def desbloquear_acceso(usuario):
 class PerfilSerializer(serializers.ModelSerializer):
     es_directivo = serializers.SerializerMethodField()
     es_administrador = serializers.SerializerMethodField()
+    permisos = serializers.SerializerMethodField()
 
     class Meta:
         model = Usuario
         fields = [
-            "id", "username", "email", "first_name", "last_name", "telefono", "rol", "es_directivo",
-            "es_administrador", "debe_cambiar_password", "autorizacion_datos_pendiente",
+            "id", "username", "email", "first_name", "last_name", "telefono", "rol", "es_socio", "es_directivo",
+            "es_administrador", "permisos", "debe_cambiar_password", "autorizacion_datos_pendiente",
         ]
         read_only_fields = [
-            "id", "username", "rol", "es_directivo", "es_administrador", "debe_cambiar_password",
-            "autorizacion_datos_pendiente",
+            "id", "username", "rol", "es_socio", "es_directivo", "es_administrador", "permisos",
+            "debe_cambiar_password", "autorizacion_datos_pendiente",
         ]
+
+    def get_permisos(self, obj):
+        from core.permisos import permisos_de
+
+        return permisos_de(obj)
 
     def get_es_directivo(self, obj):
         from core.permisos import es_directivo
@@ -67,7 +73,7 @@ class UsuarioSimpleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Usuario
-        fields = ["id", "username", "nombre_completo", "rol", "email", "cedula", "tarjeta_profesional"]
+        fields = ["id", "username", "nombre_completo", "rol", "es_socio", "email", "cedula", "tarjeta_profesional"]
 
     def get_nombre_completo(self, obj):
         nombre = obj.get_full_name()
@@ -84,7 +90,7 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
         model = Usuario
         fields = [
             "id", "username", "first_name", "last_name", "email", "telefono", "cedula", "tarjeta_profesional",
-            "rol", "is_active", "password", "nombre_completo", "last_login",
+            "rol", "es_socio", "is_active", "password", "nombre_completo", "last_login",
             "debe_cambiar_password", "autorizacion_datos_pendiente", "fecha_autorizacion_datos",
         ]
         read_only_fields = [
@@ -134,6 +140,12 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
                 validate_password(password, user=referencia)
             except Exception as exc:  # django ValidationError con varios mensajes
                 raise serializers.ValidationError({"password": list(getattr(exc, "messages", [str(exc)]))})
+
+        rol = attrs.get("rol", inst.rol if inst else None)
+        if attrs.get("es_socio") and rol != "abogado":
+            raise serializers.ValidationError({"es_socio": "Solo un abogado puede ser socio."})
+        if rol != "abogado" and "es_socio" not in attrs and inst is not None and inst.es_socio:
+            attrs["es_socio"] = False  # al dejar de ser abogado se pierde la condición de socio
 
         # Evitar que un administrador se bloquee a sí mismo
         request = self.context.get("request")

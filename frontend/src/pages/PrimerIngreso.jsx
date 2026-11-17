@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 import { mensajeError } from "../utils/errores";
+import { rutaInicial } from "../utils/permisos";
 import AuthLayout, { Aviso, estiloInput, estiloBoton } from "../components/AuthLayout";
 import CampoClave from "../components/CampoClave";
 
@@ -30,7 +31,7 @@ export default function PrimerIngreso() {
       .then((r) => {
         const p = r.data;
         setPerfil(p);
-        if (!p.debe_cambiar_password && !p.autorizacion_datos_pendiente) navigate(p.rol === "cliente" ? "/configuracion" : "/dashboard", { replace: true });
+        if (!p.debe_cambiar_password && !p.autorizacion_datos_pendiente) navigate(rutaInicial(p), { replace: true });
       })
       .catch(() => navigate("/login", { replace: true }));
 

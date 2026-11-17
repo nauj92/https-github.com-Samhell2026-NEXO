@@ -11,6 +11,7 @@ import Borrador from "../components/Borrador";
 import { mensajeError } from "../utils/errores";
 import { fecha } from "../utils/formato";
 import { Encabezado, Modal, Campo, Dato, Chip, Etiqueta, inputStyle, thStyle, tdStyle, botonSecundario, enlace, mensajeErrorEstilo } from "../components/ui";
+import { usePermisos } from "../utils/permisos";
 
 const ESTADOS = {
   por_elaborar: { label: "Por elaborar", bg: "#e9ecf0", color: "#5b6f84" },
@@ -63,7 +64,8 @@ export default function Contestaciones() {
   const [juzgados, setJuzgados] = useState([]);
   const [expedientes, setExpedientes] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
-  const [perfil, setPerfil] = useState(null);
+  const permiso = usePermisos("documentos");
+  const perfil = permiso.perfil;
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState("");
@@ -92,7 +94,6 @@ export default function Contestaciones() {
     api.get("/demandas/").then((r) => setDemandas(r.data)).catch(() => {});
     api.get("/expedientes/").then((r) => setExpedientes(r.data)).catch(() => {});
     api.get("/usuarios/").then((r) => setUsuarios(r.data)).catch(() => {});
-    api.get("/perfil/").then((r) => setPerfil(r.data)).catch(() => {});
   }, []);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -245,7 +246,7 @@ export default function Contestaciones() {
   return (
     <Layout>
       <div style={{ minHeight: "100vh", background: "#f4f7fb", fontFamily: "sans-serif" }}>
-        <Encabezado Icono={FileSignature} titulo="B1 · Contestación de demanda" busqueda={busqueda} setBusqueda={setBusqueda} placeholder="Buscar contestación..." textoBoton="+ Nueva contestación" onNuevo={abrirNueva} />
+        <Encabezado Icono={FileSignature} titulo="B1 · Contestación de demanda" busqueda={busqueda} setBusqueda={setBusqueda} placeholder="Buscar contestación..." textoBoton="+ Nueva contestación" onNuevo={permiso.crear ? abrirNueva : undefined} />
         <main style={{ padding: "32px" }}>
           <p style={{ color: "#6b7f96", fontSize: "13px", marginTop: 0 }}>
             El plazo se cuenta en días hábiles desde la notificación (20 días por defecto en el proceso verbal; puede cambiarlo según la clase de proceso).
@@ -294,8 +295,8 @@ export default function Contestaciones() {
                           <td style={tdStyle}>{c.abogado_nombre || "—"}</td>
                           <td style={tdStyle}>
                             <button style={enlace()} onClick={() => setDetalle(c)}>Ver</button>
-                            <button style={enlace("#a8681a")} onClick={() => abrirEditar(c)}>Editar</button>
-                            <button style={enlace("#c73a3a")} onClick={() => eliminar(c)}>Eliminar</button>
+                            {permiso.editar && <button style={enlace("#a8681a")} onClick={() => abrirEditar(c)}>Editar</button>}
+                            {permiso.eliminar && <button style={enlace("#c73a3a")} onClick={() => eliminar(c)}>Eliminar</button>}
                           </td>
                         </tr>
                       );
@@ -359,10 +360,10 @@ export default function Contestaciones() {
                   <SelectorDespacho juzgados={juzgados} value={form.juzgado} onChange={(v) => setForm({ ...form, juzgado: v })} />
                 </div>
               </div>
-              {perfil?.es_directivo && (
+              {perfil && (perfil.rol !== "abogado" || perfil.es_socio) && (
                 <Campo label="Abogado responsable en el sistema">
                   <select value={form.abogado_responsable} onChange={(e) => (e.target.value === "__nuevo__" ? abrirAbogados() : set("abogado_responsable")(e))} style={inputStyle}>
-                    <option value="">Yo (por defecto)</option>
+                    <option value="">{perfil?.rol === "abogado" ? "Yo (por defecto)" : "Seleccione el abogado…"}</option>
                     {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre_completo}</option>)}
                     <option value="__nuevo__">+ Crear nuevo abogado…</option>
                   </select>

@@ -20,6 +20,7 @@ class ExpedienteAdmin(admin.ModelAdmin):
     list_filter = ("estado", "materia", "juzgado")
     search_fields = ("numero", "demandante", "demandado")
     inlines = [EtapaProcesoInline]
+    filter_horizontal = ("colaboradores",)
 
 
 @admin.register(EtapaProceso)

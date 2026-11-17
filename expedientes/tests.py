@@ -47,7 +47,7 @@ class RadicadoTests(SimpleTestCase):
 class BaseApi(APITestCase):
     def setUp(self):
         self.admin = crear_usuario("admin1", "administrador")
-        self.socio = crear_usuario("socio1", "socio_director")
+        self.socio = crear_usuario("socio1", "abogado", es_socio=True)
         self.abogado = crear_usuario("abog1", "abogado")
         self.otro = crear_usuario("abog2", "abogado")
         self.exp_propio = crear_expediente(self.abogado)
@@ -141,7 +141,7 @@ class ExpedienteApiTests(BaseApi):
 
     def test_eliminar_expediente_con_facturas_responde_409(self):
         Factura.objects.create(numero="F-1", expediente=self.exp_propio, concepto="Honorarios", monto=1000)
-        self.como(self.abogado)
+        self.como(self.admin)
         r = self.client.delete(f"/api/expedientes/{self.exp_propio.pk}/")
         self.assertEqual(r.status_code, 409)
         self.assertIn("facturas", r.data["detail"])
@@ -149,6 +149,8 @@ class ExpedienteApiTests(BaseApi):
 
     def test_eliminar_expediente_sin_facturas(self):
         self.como(self.abogado)
+        self.assertEqual(self.client.delete(f"/api/expedientes/{self.exp_propio.pk}/").status_code, 403)  # solo el administrador
+        self.como(self.admin)
         self.assertEqual(self.client.delete(f"/api/expedientes/{self.exp_propio.pk}/").status_code, 204)
 
 
@@ -297,6 +299,8 @@ class DocumentosApiTests(BaseApi):
     def test_eliminar_documento(self):
         self.como(self.abogado)
         doc = self.subir().data
+        self.assertEqual(self.client.delete(self.url(doc=doc["id"])).status_code, 403)  # el abogado no elimina
+        self.como(self.admin)
         self.assertEqual(self.client.delete(self.url(doc=doc["id"])).status_code, 204)
         self.assertEqual(DocumentoExpediente.objects.count(), 0)
 
@@ -490,6 +494,7 @@ class DocumentosAlmacenamientoExternoTests(DocumentosApiTests):
         self.como(self.abogado)
         doc = self.subir().data
         self.assertEqual(len(self.s3.objetos), 1)
+        self.como(self.admin)
         self.assertEqual(self.client.delete(self.url(doc=doc["id"])).status_code, 204)
         self.assertEqual(self.s3.objetos, {})
 
@@ -565,17 +570,19 @@ class HistorialDocumentosYEtapasTests(BaseApi):
     def test_adjuntar_y_eliminar_un_documento_queda_en_el_historial(self):
         self.como(self.abogado)
         doc = self.subir("poder.pdf").data
+        self.como(self.admin)
         self.client.delete(f"/api/expedientes/{self.exp_propio.pk}/documentos/{doc['id']}/")
         eventos = self.historial()
         self.assertEqual(eventos[0]["tipo"], "Documento eliminado")
         self.assertEqual(eventos[0]["cambios"], [{"campo": "Documento", "anterior": "poder.pdf", "nuevo": "—"}])
         self.assertEqual(eventos[1]["tipo"], "Documento adjuntado")
         self.assertEqual(eventos[1]["cambios"], [{"campo": "Documento", "anterior": "—", "nuevo": "poder.pdf"}])
-        self.assertEqual(eventos[0]["usuario"], self.abogado.get_full_name())
+        self.assertEqual(eventos[0]["usuario"], self.admin.get_full_name())  # quien eliminó
 
     def test_el_registro_sobrevive_a_la_eliminacion_del_documento(self):
         self.como(self.abogado)
         doc = self.subir().data
+        self.como(self.admin)
         self.client.delete(f"/api/expedientes/{self.exp_propio.pk}/documentos/{doc['id']}/")
         self.assertEqual(DocumentoExpediente.objects.count(), 0)
         self.assertIn("Documento adjuntado", [e["tipo"] for e in self.historial()])
@@ -614,7 +621,7 @@ class HistorialDocumentosYEtapasTests(BaseApi):
 
     def test_eliminar_una_etapa(self):
         etapa = EtapaProceso.objects.create(expediente=self.exp_propio, nombre="Alegatos")
-        self.como(self.abogado)
+        self.como(self.admin)
         self.assertEqual(self.client.delete(f"/api/etapas/{etapa.pk}/").status_code, 204)
         ev = self.historial()[0]
         self.assertEqual(ev["tipo"], "Etapa eliminada")

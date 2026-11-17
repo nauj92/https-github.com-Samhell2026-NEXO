@@ -32,8 +32,14 @@ class FacturaApiTests(APITestCase):
     def post(self, **extra):
         return self.client.post("/api/facturas/", self.datos(**extra), format="json")
 
-    def test_crea_factura_normaliza_numero_y_completa_cliente(self):
+    def test_el_abogado_consulta_pero_no_factura(self):
+        # Matriz de roles: en finanzas el abogado solo consulta; crear y modificar es del administrador
         self.client.force_authenticate(self.abogado)
+        self.assertEqual(self.post().status_code, 403)
+        self.assertEqual(self.client.get("/api/facturas/").status_code, 200)
+
+    def test_crea_factura_normaliza_numero_y_completa_cliente(self):
+        self.client.force_authenticate(self.admin)
         r = self.post()
         self.assertEqual(r.status_code, 201, r.data)
         self.assertEqual(r.data["numero"], "F-100")
@@ -41,38 +47,28 @@ class FacturaApiTests(APITestCase):
         self.assertEqual(r.data["cliente_nombre"], "Cliente Uno")
 
     def test_monto_debe_ser_positivo(self):
-        self.client.force_authenticate(self.abogado)
+        self.client.force_authenticate(self.admin)
         for monto in ("0", "-5000"):
             r = self.post(monto=monto)
             self.assertEqual(r.status_code, 400)
             self.assertIn("mayor que cero", str(r.data["monto"][0]))
 
     def test_vencimiento_no_puede_ser_anterior_a_la_emision(self):
-        self.client.force_authenticate(self.abogado)
+        self.client.force_authenticate(self.admin)
         r = self.post(fecha_vencimiento=(self.hoy - timedelta(days=1)).isoformat())
         self.assertEqual(r.status_code, 400)
         self.assertIn("fecha_vencimiento", r.data)
 
     def test_el_cliente_debe_coincidir_con_el_del_expediente(self):
-        self.client.force_authenticate(self.abogado)
+        self.client.force_authenticate(self.admin)
         r = self.post(cliente=crear_cliente("Otro Cliente").pk)
         self.assertEqual(r.status_code, 400)
         self.assertIn("cliente", r.data)
-
-    def test_abogado_debe_asociar_la_factura_a_un_expediente(self):
-        self.client.force_authenticate(self.abogado)
-        r = self.post(expediente=None)
-        self.assertEqual(r.status_code, 400)
-        self.assertIn("expediente", r.data)
 
     def test_admin_puede_facturar_sin_expediente(self):
         self.client.force_authenticate(self.admin)
         r = self.post(expediente=None, cliente=self.cliente.pk)
         self.assertEqual(r.status_code, 201, r.data)
-
-    def test_no_se_factura_sobre_expediente_ajeno(self):
-        self.client.force_authenticate(self.abogado)
-        self.assertEqual(self.post(expediente=self.exp_ajeno.pk).status_code, 400)
 
     def test_cada_usuario_ve_solo_sus_facturas(self):
         Factura.objects.create(numero="A-1", expediente=self.exp, concepto="Propia", monto=100)
@@ -83,7 +79,7 @@ class FacturaApiTests(APITestCase):
         self.assertEqual(len(self.client.get("/api/facturas/").data), 2)
 
     def test_fecha_de_pago_se_fija_y_se_borra_sola(self):
-        self.client.force_authenticate(self.abogado)
+        self.client.force_authenticate(self.admin)
         creada = self.post().data
         self.assertIsNone(creada["fecha_pago"])
 
@@ -94,11 +90,11 @@ class FacturaApiTests(APITestCase):
         self.assertIsNone(vuelta["fecha_pago"])
 
     def test_la_fecha_de_pago_no_se_puede_enviar_a_mano(self):
-        self.client.force_authenticate(self.abogado)
+        self.client.force_authenticate(self.admin)
         r = self.post(fecha_pago="2020-01-01")
         self.assertIsNone(r.data["fecha_pago"])
 
     def test_numero_repetido(self):
-        self.client.force_authenticate(self.abogado)
+        self.client.force_authenticate(self.admin)
         self.assertEqual(self.post().status_code, 201)
         self.assertEqual(self.post().status_code, 400)

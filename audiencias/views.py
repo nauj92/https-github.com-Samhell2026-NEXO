@@ -8,6 +8,7 @@ from .serializers import AudienciaSerializer
 
 class AudienciaViewSet(viewsets.ModelViewSet):
     serializer_class = AudienciaSerializer
+    modulo = "agenda"
 
     def get_queryset(self):
         return Audiencia.objects.filter(expediente__in=expedientes_visibles(self.request.user)).select_related(

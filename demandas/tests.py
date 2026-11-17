@@ -122,6 +122,8 @@ class DemandaApiTests(APITestCase):
     def test_eliminar(self):
         self.client.force_authenticate(self.abogado)
         pk = self.crear().data["id"]
+        self.assertEqual(self.client.delete(f"/api/demandas/{pk}/").status_code, 403)  # el abogado no elimina
+        self.client.force_authenticate(self.admin)
         self.assertEqual(self.client.delete(f"/api/demandas/{pk}/").status_code, 204)
 
     def test_notificacion_de_plazo_de_subsanacion_vencido(self):
@@ -634,7 +636,7 @@ class Articulo96Tests(APITestCase):
         self.assertEqual(r.status_code, 201, r.data)
         self.assertIn("Verbal", r.data["demanda_texto"])
         self.client.force_authenticate(self.admin)
-        self.assertEqual(self.crear(demanda=ajena.pk).status_code, 201)
+        self.assertEqual(self.crear(demanda=ajena.pk, abogado_responsable=self.abogado.pk).status_code, 201)
 
     def test_presentada_con_requisitos_incompletos_se_guarda_y_avisa(self):
         r = self.client.post("/api/contestaciones/", {

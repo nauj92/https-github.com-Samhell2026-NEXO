@@ -20,7 +20,7 @@ class CargarDemoTests(TestCase):
         self.assertEqual(Factura.objects.count(), 3)
         for exp in Expediente.objects.all():
             self.assertEqual(validar_radicado(exp.numero), exp.numero)
-        self.assertEqual(Usuario.objects.filter(rol="abogado").count(), 1)
+        self.assertEqual(Usuario.objects.filter(rol="abogado").count(), 2)  # la abogada y el socio (abogado marcado como socio)
 
         # El filtro por rol se puede demostrar: la abogada solo tiene sus 3 expedientes.
         abogada = Usuario.objects.get(username="abogada.rojas")

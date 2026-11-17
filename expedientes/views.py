@@ -8,14 +8,16 @@ from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from simple_history.models import HistoricalRecords
 
 from audiencias.models import Audiencia
-from core.permisos import EsDirectivo, es_directivo, expedientes_visibles, facturas_visibles
+from core.permisos import (
+    ROL_ABOGADO, ROL_SECRETARIA, EsAdministrador, expedientes_visibles, facturas_visibles, permiso_de,
+)
 from facturacion.models import Factura
 
 from .historial import historial_de
@@ -47,14 +49,23 @@ class JuzgadoViewSet(EliminarProtegidoMixin, viewsets.ModelViewSet):
     mensaje_protegido = "No se puede eliminar el juzgado porque tiene expedientes asociados."
 
     def get_permissions(self):
-        # Cualquier usuario autenticado puede crear juzgados; editarlos o borrarlos es de directivos.
+        # Todo el personal consulta el catálogo; crear juzgados lo hace quien puede crear expedientes;
+        # editarlos o borrarlos es del administrador.
+        if self.action == "create":
+            return [permiso_de("expedientes", "C")()]
         if self.action in ("update", "partial_update", "destroy"):
-            return [EsDirectivo()]
+            return [EsAdministrador()]
         return super().get_permissions()
 
 
 class ExpedienteViewSet(EliminarProtegidoMixin, viewsets.ModelViewSet):
     serializer_class = ExpedienteSerializer
+    modulo = "expedientes"
+    # Los documentos adjuntos pertenecen al módulo «documentos» de la matriz de permisos
+    permisos_accion = {
+        "documentos": {"GET": ("documentos", "V"), "POST": ("documentos", "C")},
+        "documento": {"GET": ("documentos", "V"), "DELETE": ("documentos", "X")},
+    }
     mensaje_protegido = (
         "No se puede eliminar el expediente porque tiene facturas asociadas. "
         "Elimine o reasigne primero las facturas."
@@ -77,11 +88,17 @@ class ExpedienteViewSet(EliminarProtegidoMixin, viewsets.ModelViewSet):
         )
 
     def perform_create(self, serializer):
-        # Si no se especifica abogado_asignado, se asigna al usuario que crea el expediente
+        usuario = self.request.user
+        datos = {}
         if not serializer.validated_data.get("abogado_asignado"):
-            serializer.save(abogado_asignado=self.request.user)
-        else:
-            serializer.save()
+            # Un abogado que crea el expediente queda como responsable; los demás deben indicar el abogado.
+            if usuario.rol != ROL_ABOGADO:
+                raise ValidationError({"abogado_asignado": "Indique el abogado responsable del expediente."})
+            datos["abogado_asignado"] = usuario
+        if usuario.rol == ROL_SECRETARIA and not usuario.is_superuser:
+            # La secretaria que da de alta un expediente queda en su equipo de apoyo para poder seguir viéndolo
+            datos["colaboradores"] = [usuario]
+        serializer.save(**datos)
 
     def perform_update(self, serializer):
         serializer.instance._history_user = self.request.user
@@ -162,11 +179,6 @@ class ExpedienteViewSet(EliminarProtegidoMixin, viewsets.ModelViewSet):
             raise NotFound("El documento no existe.")
 
         if request.method == "DELETE":
-            if not es_directivo(request.user) and doc.subido_por_id != request.user.id:
-                return Response(
-                    {"detail": "Solo quien subió el documento, un socio o un administrador puede eliminarlo."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
             eventos.registrar(expediente, request.user, "Documento eliminado", [("Documento", doc.nombre, "—")])
             doc.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
@@ -183,6 +195,7 @@ class ExpedienteViewSet(EliminarProtegidoMixin, viewsets.ModelViewSet):
 
 class EtapaProcesoViewSet(viewsets.ModelViewSet):
     serializer_class = EtapaProcesoSerializer
+    modulo = "agenda"  # las etapas con fecha límite son los plazos de la agenda
 
     def get_queryset(self):
         return EtapaProceso.objects.filter(expediente__in=expedientes_visibles(self.request.user))
@@ -205,6 +218,8 @@ class EtapaProcesoViewSet(viewsets.ModelViewSet):
 
 
 class DashboardStatsView(APIView):
+    modulo = "reportes"
+
     def get(self, request):
         hoy = timezone.localdate()
         en_7_dias = hoy + timedelta(days=7)

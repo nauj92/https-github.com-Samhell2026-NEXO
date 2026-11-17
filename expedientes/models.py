@@ -50,6 +50,11 @@ class Expediente(models.Model):
     abogado_asignado = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="expedientes"
     )
+    # Equipo de apoyo: secretarias y escribientes que ven y trabajan este expediente (además del abogado asignado)
+    colaboradores = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="expedientes_apoyo",
+        help_text="Secretarias y escribientes que ven este expediente.",
+    )
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
     history = HistoricalRecords()

@@ -53,18 +53,27 @@ class AcuerdoPagoApiTests(APITestCase):
     def test_exige_autenticacion(self):
         self.assertEqual(self.client.get(URL).status_code, 401)
 
-    def test_crea_con_cuotas_mensuales(self):
+    def test_el_abogado_consulta_pero_no_crea_ni_paga(self):
+        # Matriz de roles: en finanzas el abogado solo consulta; crear y modificar es del administrador
+        self.client.force_authenticate(self.admin)
+        a = self.crear().data
         self.client.force_authenticate(self.abogado)
+        self.assertEqual(self.crear().status_code, 403)
+        self.assertEqual(self.client.get(URL).status_code, 200)
+        self.assertEqual(self.client.post(f"{URL}{a['id']}/pagar/", {"cuota": a["cuotas"][0]["id"]}, format="json").status_code, 403)
+
+    def test_crea_con_cuotas_mensuales(self):
+        self.client.force_authenticate(self.admin)
         r = self.crear()
         self.assertEqual(r.status_code, 201, r.data)
         self.assertEqual(len(r.data["cuotas"]), 3)
         self.assertEqual([c["numero"] for c in r.data["cuotas"]], [1, 2, 3])
         self.assertEqual(Decimal(r.data["saldo"]), Decimal("3000000"))
         self.assertEqual(r.data["estado_actual"], "vigente")
-        self.assertEqual(AcuerdoPago.objects.get().creado_por, self.abogado)
+        self.assertEqual(AcuerdoPago.objects.get().creado_por, self.admin)
 
     def test_valida_datos(self):
-        self.client.force_authenticate(self.abogado)
+        self.client.force_authenticate(self.admin)
         self.assertEqual(self.crear(valor_total="0").status_code, 400)
         self.assertEqual(self.crear(deudor="  ").status_code, 400)
         self.assertEqual(self.crear(num_cuotas=0).status_code, 400)
@@ -74,16 +83,17 @@ class AcuerdoPagoApiTests(APITestCase):
         del datos["num_cuotas"]
         self.assertEqual(self.client.post(URL, datos, format="json").status_code, 400)
 
-    def test_no_permite_expediente_ajeno_ni_cerrado(self):
-        self.client.force_authenticate(self.abogado)
-        self.assertEqual(self.crear(expediente=self.exp_ajeno.pk).status_code, 400)
+    def test_no_permite_expediente_cerrado(self):
+        self.client.force_authenticate(self.admin)
         self.exp.estado = "cerrado"
         self.exp.save()
         self.assertEqual(self.crear().status_code, 400)
 
     def test_cada_usuario_ve_solo_los_suyos(self):
-        self.client.force_authenticate(self.abogado)
+        self.client.force_authenticate(self.admin)
         self.crear()
+        self.client.force_authenticate(self.abogado)
+        self.assertEqual(len(self.client.get(URL).data), 1)
         self.client.force_authenticate(self.otro)
         self.assertEqual(len(self.client.get(URL).data), 0)
         self.client.force_authenticate(self.admin)
@@ -100,7 +110,7 @@ class AcuerdoPagoApiTests(APITestCase):
         self.assertEqual(len(self.client.get(URL, {"expediente": self.exp.pk}).data), 1)
 
     def test_registrar_pago_y_deshacerlo(self):
-        self.client.force_authenticate(self.abogado)
+        self.client.force_authenticate(self.admin)
         acuerdo = self.crear().data
         c1 = acuerdo["cuotas"][0]["id"]
         r = self.client.post(f"{URL}{acuerdo['id']}/pagar/", {"cuota": c1}, format="json")
@@ -116,7 +126,7 @@ class AcuerdoPagoApiTests(APITestCase):
         self.assertEqual(self.client.post(f"{URL}{acuerdo['id']}/reabrir/", {"cuota": c1}, format="json").status_code, 400)
 
     def test_pago_con_fecha_futura_o_cuota_ajena_se_rechaza(self):
-        self.client.force_authenticate(self.abogado)
+        self.client.force_authenticate(self.admin)
         a1 = self.crear().data
         a2 = self.crear().data
         futura = (self.hoy + timedelta(days=3)).isoformat()
@@ -129,14 +139,14 @@ class AcuerdoPagoApiTests(APITestCase):
         self.assertEqual(self.client.post(f"{URL}{a1['id']}/pagar/", {}, format="json").status_code, 400)
 
     def test_no_se_puede_pagar_en_el_acuerdo_de_otro(self):
-        self.client.force_authenticate(self.abogado)
+        self.client.force_authenticate(self.admin)
         a = self.crear().data
         self.client.force_authenticate(self.otro)
         r = self.client.post(f"{URL}{a['id']}/pagar/", {"cuota": a["cuotas"][0]["id"]}, format="json")
-        self.assertEqual(r.status_code, 404)
+        self.assertEqual(r.status_code, 403)  # el abogado no registra pagos (matriz de roles)
 
     def test_estados_cumplido_mora_y_cancelado(self):
-        self.client.force_authenticate(self.abogado)
+        self.client.force_authenticate(self.admin)
         a = self.crear(num_cuotas=1, fecha_acuerdo=(self.hoy - timedelta(days=40)).isoformat(),
                        fecha_primera_cuota=(self.hoy - timedelta(days=30)).isoformat()).data
         self.assertEqual(a["estado_actual"], "en_mora")
@@ -151,7 +161,7 @@ class AcuerdoPagoApiTests(APITestCase):
         )
 
     def test_edicion_limitada(self):
-        self.client.force_authenticate(self.abogado)
+        self.client.force_authenticate(self.admin)
         a = self.crear().data
         r = self.client.patch(f"{URL}{a['id']}/", {"concepto": "Honorarios", "observaciones": "Acta 4"}, format="json")
         self.assertEqual(r.status_code, 200, r.data)
@@ -161,13 +171,13 @@ class AcuerdoPagoApiTests(APITestCase):
         self.assertEqual(self.client.patch(f"{URL}{a['id']}/", {"expediente": self.exp_ajeno.pk}, format="json").status_code, 400)
 
     def test_eliminar_borra_las_cuotas(self):
-        self.client.force_authenticate(self.abogado)
+        self.client.force_authenticate(self.admin)
         a = self.crear().data
         self.assertEqual(self.client.delete(f"{URL}{a['id']}/").status_code, 204)
         self.assertEqual(AcuerdoPago.objects.count(), 0)
 
     def test_los_movimientos_quedan_en_el_historial_del_expediente(self):
-        self.client.force_authenticate(self.abogado)
+        self.client.force_authenticate(self.admin)
         a = self.crear().data
         self.client.post(f"{URL}{a['id']}/pagar/", {"cuota": a["cuotas"][0]["id"]}, format="json")
         self.client.patch(f"{URL}{a['id']}/", {"estado": "cancelado"}, format="json")
