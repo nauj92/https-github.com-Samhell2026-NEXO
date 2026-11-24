@@ -7,6 +7,8 @@ class Notificacion(models.Model):
         AUDIENCIA = "audiencia", "Audiencia próxima"
         PLAZO = "plazo", "Plazo procesal"
         FACTURA = "factura", "Factura"
+        TAREA = "tarea", "Tarea"
+        BORRADOR = "borrador", "Borrador pendiente"
         GENERAL = "general", "General"
 
     usuario = models.ForeignKey(

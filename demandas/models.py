@@ -2,7 +2,34 @@ from django.conf import settings
 from django.db import models
 
 
-class Demanda(models.Model):
+class AprobacionMixin(models.Model):
+    """Flujo de aprobación del abogado: el escribiente y la secretaria preparan borradores, el abogado los aprueba.
+
+    borrador -> (enviar) pendiente -> (aprobar) aprobado | (devolver, con motivo) devuelto -> borrador...
+    Lo que crea un abogado nace aprobado. Si alguien sin permiso de aprobar modifica un escrito, vuelve a borrador.
+    """
+
+    class Aprobacion(models.TextChoices):
+        BORRADOR = "borrador", "Borrador"
+        PENDIENTE = "pendiente", "Pendiente de aprobación"
+        APROBADO = "aprobado", "Aprobado"
+        DEVUELTO = "devuelto", "Devuelto para ajustes"
+
+    aprobacion = models.CharField(max_length=12, choices=Aprobacion.choices, default=Aprobacion.BORRADOR)
+    enviado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    aprobado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    aprobado_en = models.DateTimeField(null=True, blank=True)
+    motivo_devolucion = models.TextField(blank=True)
+
+    class Meta:
+        abstract = True
+
+
+class Demanda(AprobacionMixin):
     """Seguimiento de una demanda desde su elaboración hasta su admisión (o rechazo)."""
 
     class Estado(models.TextChoices):
@@ -109,7 +136,7 @@ class Demanda(models.Model):
         return f"{self.clase_proceso}: {self.demandante} vs {self.demandado}"
 
 
-class ContestacionDemanda(models.Model):
+class ContestacionDemanda(AprobacionMixin):
     """B1: contestación de una demanda en la que el cliente del despacho es el demandado."""
 
     class Estado(models.TextChoices):
@@ -193,7 +220,7 @@ class ContestacionDemanda(models.Model):
         return f"Contestación: {self.demandante} vs {self.demandado}"
 
 
-class Citacion(models.Model):
+class Citacion(AprobacionMixin):
     """Citación al demandado para notificarse (art. 291 CGP) o notificación por aviso (art. 292 CGP)."""
 
     class Tipo(models.TextChoices):

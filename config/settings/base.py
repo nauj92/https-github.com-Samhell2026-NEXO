@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "liquidaciones",
     "vigilancia",
     "demandas",
+    "tareas",
     "core",
 ]
 

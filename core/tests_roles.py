@@ -22,7 +22,7 @@ class MatrizTests(APITestCase):
         self.assertFalse(puede(secretaria, "expedientes", "X"))
         self.assertFalse(puede(escribiente, "expedientes", "C"))
         self.assertTrue(puede(escribiente, "documentos", "E"))
-        self.assertEqual(permisos_de(dependiente), {"documentos": "C", "agenda": "V"})
+        self.assertEqual(permisos_de(dependiente), {"documentos": "C", "tareas": "VE"})
         self.assertFalse(puede(cliente, "expedientes", "E"))
         self.assertEqual(set(permisos_de(crear_usuario("root", "abogado", is_superuser=True))), set(MATRIZ))
 

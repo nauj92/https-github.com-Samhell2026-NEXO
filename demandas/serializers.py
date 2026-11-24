@@ -49,7 +49,24 @@ CAMPOS_ART96 = [
 ]
 
 
-class DemandaSerializer(serializers.ModelSerializer):
+CAMPOS_APROBACION = [
+    "aprobacion", "aprobacion_display", "enviado_por", "aprobado_por", "aprobado_por_nombre", "aprobado_en",
+    "motivo_devolucion",
+]
+
+
+class AprobacionSerializer(serializers.ModelSerializer):
+    """Campos de solo lectura del flujo de aprobación; solo cambian con las acciones enviar, aprobar y devolver."""
+
+    aprobacion_display = serializers.CharField(source="get_aprobacion_display", read_only=True)
+    aprobado_por_nombre = serializers.SerializerMethodField()
+
+    def get_aprobado_por_nombre(self, obj):
+        usuario = obj.aprobado_por
+        return (usuario.get_full_name() or usuario.username) if usuario else None
+
+
+class DemandaSerializer(AprobacionSerializer):
     cliente_nombre = serializers.CharField(source="cliente.nombre", read_only=True, default=None)
     expediente_numero = serializers.CharField(source="expediente.numero", read_only=True, default=None)
     juzgado_nombre = serializers.CharField(source="juzgado.nombre", read_only=True, default=None)
@@ -67,9 +84,9 @@ class DemandaSerializer(serializers.ModelSerializer):
             "estado", "estado_display", "fecha_radicacion", "fecha_inadmision", "fecha_admision",
             "fecha_limite_subsanacion", "dias_para_subsanar", "abogado_responsable", "abogado_nombre",
             "borrador", "observaciones", "creado_en", "actualizado_en", "requisitos",
-            *CAMPOS_ART82,
+            *CAMPOS_ART82, *CAMPOS_APROBACION,
         ]
-        read_only_fields = ["id", "creado_en", "actualizado_en"]
+        read_only_fields = ["id", "creado_en", "actualizado_en", *CAMPOS_APROBACION]
 
     def get_requisitos(self, obj):
         return requisitos_art82(obj)
@@ -242,7 +259,7 @@ def _nombre_parte(value, campo):
     return value
 
 
-class ContestacionSerializer(serializers.ModelSerializer):
+class ContestacionSerializer(AprobacionSerializer):
     cliente_nombre = serializers.CharField(source="cliente.nombre", read_only=True, default=None)
     expediente_numero = serializers.CharField(source="expediente.numero", read_only=True, default=None)
     juzgado_nombre = serializers.CharField(source="juzgado.nombre", read_only=True, default=None)
@@ -262,9 +279,9 @@ class ContestacionSerializer(serializers.ModelSerializer):
             "fecha_limite", "dias_restantes", "estado", "estado_display", "fecha_presentacion", "extemporanea",
             "excepciones", "pruebas", "borrador", "abogado_responsable", "abogado_nombre", "observaciones",
             "creado_en", "actualizado_en", "demanda_texto", "requisitos",
-            *CAMPOS_ART96,
+            *CAMPOS_ART96, *CAMPOS_APROBACION,
         ]
-        read_only_fields = ["id", "creado_en", "actualizado_en"]
+        read_only_fields = ["id", "creado_en", "actualizado_en", *CAMPOS_APROBACION]
 
     @staticmethod
     def limite(obj):
@@ -417,7 +434,7 @@ class ContestacionSerializer(serializers.ModelSerializer):
 DIAS_COMPARECENCIA = {"mismo_municipio": 5, "otro_municipio": 10, "exterior": 30}
 
 
-class CitacionSerializer(serializers.ModelSerializer):
+class CitacionSerializer(AprobacionSerializer):
     expediente_numero = serializers.CharField(source="expediente.numero", read_only=True, default=None)
     demanda_texto = serializers.SerializerMethodField()
     abogado_nombre = serializers.SerializerMethodField()
@@ -435,9 +452,9 @@ class CitacionSerializer(serializers.ModelSerializer):
             "tipo", "tipo_display", "ubicacion", "ubicacion_display", "estado", "estado_display", "fecha_envio",
             "empresa_mensajeria", "guia", "fecha_entrega", "fecha_notificacion", "fecha_limite_comparecencia",
             "dias_restantes", "fecha_surte_efecto", "abogado_responsable", "abogado_nombre", "observaciones",
-            "creado_en", "actualizado_en",
+            "creado_en", "actualizado_en", *CAMPOS_APROBACION,
         ]
-        read_only_fields = ["id", "creado_en", "actualizado_en"]
+        read_only_fields = ["id", "creado_en", "actualizado_en", *CAMPOS_APROBACION]
 
     def get_demanda_texto(self, obj):
         return f"{obj.demanda.clase_proceso}: {obj.demanda.demandante} vs {obj.demanda.demandado}" if obj.demanda else None

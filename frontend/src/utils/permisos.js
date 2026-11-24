@@ -26,6 +26,7 @@ const MODULO_POR_RUTA = [
   ["/citaciones", "documentos"],
   ["/clientes", "clientes"],
   ["/abogados", "usuarios"],
+  ["/tareas", "tareas"],
   ["/audiencias", "agenda"],
   ["/acuerdos", "finanzas"],
   ["/expedientes", "expedientes"],
@@ -43,7 +44,7 @@ export const puedeVerRuta = (perfil, ruta) => {
 export const rutaInicial = (perfil) => {
   if (!perfil) return "/dashboard";
   if (perfil.rol === "cliente") return "/configuracion";
-  const orden = ["/dashboard", "/expedientes", "/audiencias", "/demandas", "/clientes", "/acuerdos", "/liquidacion/laboral"];
+  const orden = ["/dashboard", "/expedientes", "/tareas", "/audiencias", "/demandas", "/clientes", "/acuerdos", "/liquidacion/laboral"];
   return orden.find((r) => puedeVerRuta(perfil, r)) || "/notificaciones";
 };
 

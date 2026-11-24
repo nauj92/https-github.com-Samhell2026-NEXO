@@ -28,6 +28,7 @@ from demandas.models import Citacion, ContestacionDemanda, Demanda
 from demandas.serializers import CitacionSerializer, ContestacionSerializer, limite_subsanacion
 from expedientes.models import EtapaProceso, Expediente
 from facturacion.models import Factura
+from tareas.models import Tarea
 from vigilancia.models import Vigilancia
 
 from .models import Notificacion
@@ -43,6 +44,67 @@ def _crear(usuario, tipo, mensaje, clave):
         return 0
     Notificacion.objects.create(usuario=usuario, tipo=tipo, mensaje=mensaje[:255], clave=clave)
     return 1
+
+
+def _nombre(usuario):
+    return usuario.get_full_name() or usuario.username
+
+
+def notificar_tarea_asignada(tarea, autor):
+    """Aviso inmediato al asignado (si no es quien la creó o reasignó)."""
+    destino = tarea.asignado_a
+    if destino is None or destino.pk == getattr(autor, "pk", None):
+        return 0
+    return _crear(
+        destino, Notificacion.Tipo.TAREA,
+        f"{_nombre(autor)} le asignó una tarea: {tarea.titulo}",
+        f"tarea:{tarea.pk}:asignada:{destino.pk}",
+    )
+
+
+def notificar_tarea_realizada(tarea, autor):
+    """Avisa a quien creó la tarea que ya fue realizada."""
+    destino = tarea.creado_por
+    if destino is None or destino.pk == getattr(autor, "pk", None):
+        return 0
+    return _crear(
+        destino, Notificacion.Tipo.TAREA,
+        f"{_nombre(autor)} marcó como realizada: {tarea.titulo}",
+        f"tarea:{tarea.pk}:realizada",
+    )
+
+
+def _texto_escrito(obj, etiqueta):
+    partes = [getattr(obj, "clase_proceso", None) or getattr(obj, "destinatario", "")]
+    contra = getattr(obj, "demandado", "")
+    if contra and getattr(obj, "clase_proceso", None):
+        partes.append(contra)
+    return f"{etiqueta}: " + " · ".join(p for p in partes if p)
+
+
+def notificar_borrador_pendiente(obj, etiqueta, autor):
+    """Avisa al abogado responsable que hay un escrito esperando su aprobación."""
+    destino = obj.abogado_responsable
+    if destino is None or destino.pk == getattr(autor, "pk", None):
+        return 0
+    return _crear(
+        destino, Notificacion.Tipo.BORRADOR,
+        f"{_nombre(autor)} envió a aprobación — {_texto_escrito(obj, etiqueta)}",
+        f"borrador:{etiqueta}:{obj.pk}:{timezone.now():%Y%m%d%H%M%S%f}",
+    )
+
+
+def notificar_borrador_resuelto(obj, etiqueta, autor, aprobado):
+    """Avisa a quien envió el escrito si fue aprobado o devuelto."""
+    destino = obj.enviado_por
+    if destino is None or destino.pk == getattr(autor, "pk", None):
+        return 0
+    resultado = "aprobó" if aprobado else "devolvió"
+    return _crear(
+        destino, Notificacion.Tipo.BORRADOR,
+        f"{_nombre(autor)} {resultado} — {_texto_escrito(obj, etiqueta)}",
+        f"borrador:{etiqueta}:{obj.pk}:{timezone.now():%Y%m%d%H%M%S%f}:{resultado}",
+    )
 
 
 def limite_aviso(hoy):
@@ -176,6 +238,20 @@ def generar_para_usuario(usuario, hoy=None):
                 mensaje = f"Factura {fac.numero} vence {_cuando(fac.fecha_vencimiento, hoy)} · {cliente}"
                 clave = f"factura:{fac.pk}:{fac.fecha_vencimiento}:proxima"
             creadas += _crear(usuario, Notificacion.Tipo.FACTURA, mensaje, clave)
+
+    # Tareas asignadas al usuario que vencen pronto o ya vencieron
+    if puede(usuario, "tareas", "V"):
+        pendientes = Tarea.objects.filter(
+            asignado_a=usuario, fecha_limite__isnull=False, fecha_limite__lte=limite
+        ).exclude(estado=Tarea.Estado.REALIZADA)
+        for tarea in pendientes:
+            if tarea.fecha_limite < hoy:
+                mensaje = f"Tarea VENCIDA ({tarea.fecha_limite:%d/%m/%Y}): {tarea.titulo}"
+                clave = f"tarea:{tarea.pk}:{tarea.fecha_limite}:vencida"
+            else:
+                mensaje = f"Tarea para {_cuando(tarea.fecha_limite, hoy)}: {tarea.titulo}"
+                clave = f"tarea:{tarea.pk}:{tarea.fecha_limite}:proxima"
+            creadas += _crear(usuario, Notificacion.Tipo.TAREA, mensaje, clave)
 
     return creadas
 

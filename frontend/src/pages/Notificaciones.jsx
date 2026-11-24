@@ -5,7 +5,7 @@ import Layout from "../components/Layout";
 import { mensajeError } from "../utils/errores";
 import { Encabezado, Chip, botonSecundario } from "../components/ui";
 
-const TIPOS = { audiencia: "Audiencia", plazo: "Plazo", factura: "Factura", general: "General" };
+const TIPOS = { audiencia: "Audiencia", plazo: "Plazo", factura: "Factura", tarea: "Tarea", borrador: "Borrador", general: "General" };
 
 const fechaHora = (iso) =>
   new Date(iso).toLocaleString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });

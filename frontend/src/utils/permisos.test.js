@@ -4,7 +4,7 @@ import { moduloDeRuta, puede, puedeVerRuta, rutaInicial } from "./permisos";
 const perfil = (rol, permisos) => ({ rol, permisos });
 const admin = perfil("administrador", { usuarios: "VCEX", reportes: "V", expedientes: "VCEX", clientes: "VCEX", agenda: "VCEX" });
 const escribiente = perfil("escribiente", { expedientes: "V", clientes: "V", documentos: "VCE", agenda: "V" });
-const dependiente = perfil("dependiente", { documentos: "C", agenda: "V" });
+const dependiente = perfil("dependiente", { documentos: "C", tareas: "VE" });
 
 describe("permisos por rol", () => {
   it("lee las letras del perfil", () => {
@@ -27,7 +27,7 @@ describe("permisos por rol", () => {
   it("elige la pantalla inicial", () => {
     expect(rutaInicial(admin)).toBe("/dashboard");
     expect(rutaInicial(escribiente)).toBe("/expedientes");
-    expect(rutaInicial(dependiente)).toBe("/audiencias");
+    expect(rutaInicial(dependiente)).toBe("/tareas");
     expect(rutaInicial(perfil("cliente", {}))).toBe("/configuracion");
   });
 });

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Expedientes from "./pages/Expedientes";
 import Audiencias from "./pages/Audiencias";
+import Tareas from "./pages/Tareas";
 import Acuerdos from "./pages/Acuerdos";
 import Configuracion from "./pages/Configuracion";
 import Abogados from "./pages/Abogados";
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/citaciones" element={<Citaciones />} />
         <Route path="/clientes" element={<Clientes />} />
         <Route path="/abogados" element={<Abogados />} />
+        <Route path="/tareas" element={<Tareas />} />
         <Route path="/audiencias" element={<Audiencias />} />
         <Route path="/acuerdos" element={<Acuerdos />} />
 

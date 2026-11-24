@@ -90,6 +90,8 @@ class UsuarioListView(APIView):
     def get(self, request):
         # Por defecto, los abogados; con ?equipo=1, las secretarias y escribientes que pueden apoyar un expediente.
         roles = ["secretario_juridico", "escribiente"] if request.query_params.get("equipo") == "1" else ["abogado"]
+        if request.query_params.get("asignables") == "1":  # a quién se le puede asignar una tarea
+            roles = ["abogado", "secretario_juridico", "escribiente", "dependiente"]
         usuarios = Usuario.objects.filter(is_active=True, rol__in=roles).order_by("first_name", "username")
         serializer = UsuarioSimpleSerializer(usuarios, many=True)
         return Response(serializer.data)

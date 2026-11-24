@@ -11,7 +11,8 @@ import Borrador from "../components/Borrador";
 import { mensajeError } from "../utils/errores";
 import { fecha } from "../utils/formato";
 import { Encabezado, Modal, Campo, Dato, Chip, Etiqueta, inputStyle, thStyle, tdStyle, botonSecundario, enlace, mensajeErrorEstilo } from "../components/ui";
-import { usePermisos } from "../utils/permisos";
+import { usePermisos } from "../utils/permisos";
+import { EtiquetaAprobacion, AccionesAprobacion, MotivoDevolucion } from "../components/Aprobacion";
 
 const ESTADOS = {
   por_elaborar: { label: "Por elaborar", bg: "#e9ecf0", color: "#5b6f84" },
@@ -290,11 +291,12 @@ export default function Contestaciones() {
                             {lim ? <span style={{ color: lim.color, fontWeight: 600 }}>{lim.texto}</span> : "—"}
                             {c.extemporanea && <div style={{ color: "#c73a3a", fontSize: "12px", fontWeight: 600 }}>Presentada fuera de término</div>}
                           </td>
-                          <td style={tdStyle}><Etiqueta texto={est.label} bg={est.bg} color={est.color} /></td>
+                          <td style={tdStyle}><Etiqueta texto={est.label} bg={est.bg} color={est.color} /><div style={{ marginTop: "6px" }}><EtiquetaAprobacion item={c} /></div><MotivoDevolucion item={c} /></td>
                           <td style={tdStyle}><ChipRequisitos req={c.requisitos} /></td>
                           <td style={tdStyle}>{c.abogado_nombre || "—"}</td>
                           <td style={tdStyle}>
                             <button style={enlace()} onClick={() => setDetalle(c)}>Ver</button>
+                            <AccionesAprobacion item={c} recurso="contestaciones" permiso={permiso} onCambio={cargar} />
                             {permiso.editar && <button style={enlace("#a8681a")} onClick={() => abrirEditar(c)}>Editar</button>}
                             {permiso.eliminar && <button style={enlace("#c73a3a")} onClick={() => eliminar(c)}>Eliminar</button>}
                           </td>

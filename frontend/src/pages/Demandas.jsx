@@ -10,7 +10,8 @@ import { mensajeError } from "../utils/errores";
 import { fecha, limpiar, pesos } from "../utils/formato";
 import Borrador from "../components/Borrador";
 import { Encabezado, Modal, Campo, Dato, Chip, Etiqueta, inputStyle, thStyle, tdStyle, botonSecundario, enlace, mensajeErrorEstilo } from "../components/ui";
-import { usePermisos } from "../utils/permisos";
+import { usePermisos } from "../utils/permisos";
+import { EtiquetaAprobacion, AccionesAprobacion, MotivoDevolucion } from "../components/Aprobacion";
 
 const ESTADOS = {
   elaboracion: { label: "En elaboración", bg: "#e9ecf0", color: "#5b6f84" },
@@ -279,11 +280,12 @@ export default function Demandas() {
                           <td style={tdStyle}>{d.demandante} <span style={{ color: "#6b7f96" }}>vs</span> {d.demandado}</td>
                           <td style={tdStyle}>{pesos(d.cuantia)}</td>
                           <td style={tdStyle}><ChipRequisitos req={d.requisitos} /></td>
-                          <td style={tdStyle}><Etiqueta texto={est.label} bg={est.bg} color={est.color} /></td>
+                          <td style={tdStyle}><Etiqueta texto={est.label} bg={est.bg} color={est.color} /><div style={{ marginTop: "6px" }}><EtiquetaAprobacion item={d} /></div><MotivoDevolucion item={d} /></td>
                           <td style={tdStyle}>{sub ? <span style={{ color: sub.color, fontWeight: 600 }}>{sub.texto}</span> : "—"}</td>
                           <td style={tdStyle}>{d.abogado_nombre || "—"}</td>
                           <td style={tdStyle}>
                             <button style={enlace()} onClick={() => setDetalle(d)}>Ver</button>
+                            <AccionesAprobacion item={d} recurso="demandas" permiso={permiso} onCambio={cargar} />
                             {permiso.editar && <button style={enlace("#a8681a")} onClick={() => abrirEditar(d)}>Editar</button>}
                             {permiso.eliminar && <button style={enlace("#c73a3a")} onClick={() => eliminar(d)}>Eliminar</button>}
                           </td>

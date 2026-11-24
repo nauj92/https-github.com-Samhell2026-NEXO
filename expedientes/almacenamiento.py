@@ -39,14 +39,14 @@ def _cliente():
     )
 
 
-def _ruta(expediente_id, nombre):
+def _ruta(expediente_id, nombre, carpeta="expedientes"):
     seguro = re.sub(r"[^A-Za-z0-9._-]", "_", nombre)[:100] or "archivo"
-    return f"expedientes/{expediente_id}/{uuid.uuid4().hex}-{seguro}"
+    return f"{carpeta}/{expediente_id}/{uuid.uuid4().hex}-{seguro}"
 
 
-def guardar(expediente_id, nombre, datos, tipo_contenido=""):
-    """Sube el archivo y devuelve su ruta dentro del bucket."""
-    ruta = _ruta(expediente_id, nombre)
+def guardar(expediente_id, nombre, datos, tipo_contenido="", carpeta="expedientes"):
+    """Sube el archivo y devuelve su ruta dentro del bucket (`carpeta`: «expedientes» o «tareas»)."""
+    ruta = _ruta(expediente_id, nombre, carpeta)
     try:
         _cliente().put_object(
             Bucket=settings.DOCUMENTOS_BUCKET, Key=ruta, Body=datos, ContentType=tipo_contenido or "application/octet-stream"

@@ -50,10 +50,16 @@ MATRIZ = {
         ROL_ADMINISTRADOR: "VCEX", ROL_ABOGADO: "VCEA", ROL_SECRETARIA: "VCE", ROL_ESCRIBIENTE: "VCE",
         ROL_DEPENDIENTE: "C", ROL_CLIENTE: "V",
     },
+    # Tareas y trámites asignados. Crea y asigna el personal jurídico; el escribiente y el dependiente solo
+    # ven sus tareas y las marcan como realizadas (estado y observación) adjuntando comprobantes.
+    "tareas": {
+        ROL_ADMINISTRADOR: "VCEX", ROL_ABOGADO: "VCEX", ROL_SECRETARIA: "VCE", ROL_ESCRIBIENTE: "VE",
+        ROL_DEPENDIENTE: "VE",
+    },
     # Agenda y plazos (audiencias, diligencias y etapas con fecha límite)
     "agenda": {
         ROL_ADMINISTRADOR: "VCEX", ROL_ABOGADO: "VCE", ROL_SECRETARIA: "VCEX", ROL_ESCRIBIENTE: "V",
-        ROL_DEPENDIENTE: "V", ROL_CLIENTE: "V",
+        ROL_CLIENTE: "V",
     },
     # Facturación y finanzas (facturas y acuerdos de pago)
     "finanzas": {ROL_ADMINISTRADOR: "VCEX", ROL_ABOGADO: "V", ROL_SECRETARIA: "V", ROL_CLIENTE: "V"},
