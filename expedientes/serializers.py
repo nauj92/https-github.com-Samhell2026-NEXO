@@ -166,7 +166,10 @@ class DocumentoExpedienteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DocumentoExpediente
-        fields = ["id", "expediente", "nombre", "tipo_contenido", "tamano", "subido_por", "subido_por_nombre", "subido_en"]
+        fields = [
+            "id", "expediente", "nombre", "tipo_contenido", "tamano", "subido_por", "subido_por_nombre", "subido_en",
+            "compartido_cliente", "origen_cliente",
+        ]
         read_only_fields = fields
 
     def get_subido_por_nombre(self, obj):

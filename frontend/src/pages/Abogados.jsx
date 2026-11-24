@@ -15,7 +15,7 @@ const generarClave = () => {
   return Array.from(a, (n) => letras[n % letras.length]).join("") + "#7";
 };
 
-const vacio = { username: "", first_name: "", last_name: "", email: "", telefono: "", cedula: "", tarjeta_profesional: "", rol: "abogado", es_socio: false, password: "" };
+const vacio = { username: "", first_name: "", last_name: "", email: "", telefono: "", cedula: "", tarjeta_profesional: "", rol: "abogado", es_socio: false, cliente: "", password: "" };
 
 const input = { width: "100%", padding: "8px 10px", border: "1px solid #d5dbe5", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" };
 const label = { fontSize: "12px", fontWeight: 600, color: "#4a5a70", display: "block", marginBottom: "4px" };
@@ -28,6 +28,7 @@ export default function Abogados() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
+  const [clientes, setClientes] = useState([]);
   const [form, setForm] = useState(null); // null = cerrado
   const [editandoId, setEditandoId] = useState(null);
   const [formError, setFormError] = useState("");
@@ -64,9 +65,13 @@ export default function Abogados() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    api.get("/clientes/").then((r) => setClientes(r.data)).catch(() => {});
+  }, []);
+
   const abrirNuevo = () => { setForm({ ...vacio }); setEditandoId(null); setFormError(""); };
   const abrirEditar = (u) => {
-    setForm({ username: u.username, first_name: u.first_name, last_name: u.last_name, email: u.email, telefono: u.telefono || "", cedula: u.cedula || "", tarjeta_profesional: u.tarjeta_profesional || "", rol: u.rol, es_socio: !!u.es_socio, password: "" });
+    setForm({ username: u.username, first_name: u.first_name, last_name: u.last_name, email: u.email, telefono: u.telefono || "", cedula: u.cedula || "", tarjeta_profesional: u.tarjeta_profesional || "", rol: u.rol, es_socio: !!u.es_socio, cliente: u.cliente || "", password: "" });
     setEditandoId(u.id);
     setFormError("");
   };
@@ -80,6 +85,7 @@ export default function Abogados() {
     setGuardando(true);
     const datos = { ...form };
     if (!datos.password) delete datos.password;
+    datos.cliente = datos.rol === "cliente" && datos.cliente ? Number(datos.cliente) : null;
     if (editandoId) delete datos.username;
     try {
       let creado = null;
@@ -190,6 +196,15 @@ export default function Abogados() {
                     {ROLES.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
                   </select>
                 </div>
+                {form.rol === "cliente" && (
+                  <div>
+                    <label style={label}>Cliente vinculado (lo que verá en su portal)</label>
+                    <select style={input} value={form.cliente} onChange={set("cliente")}>
+                      <option value="">Sin vincular</option>
+                      {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                    </select>
+                  </div>
+                )}
                 {form.rol === "abogado" && (
                   <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px" }}>
                     <input type="checkbox" checked={!!form.es_socio} onChange={(e) => setForm({ ...form, es_socio: e.target.checked })} />

@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "vigilancia",
     "demandas",
     "tareas",
+    "portal",
     "core",
 ]
 

@@ -46,6 +46,35 @@ def _crear(usuario, tipo, mensaje, clave):
     return 1
 
 
+def notificar_cliente(cliente, asunto, texto, clave):
+    """Avisa al cliente: notificación dentro del portal y correo. Nunca lanza (el correo puede fallar).
+
+    Devuelve cuántas notificaciones internas creó.
+    """
+    from django.conf import settings
+    from django.core.mail import send_mail
+
+    if cliente is None:
+        return 0
+    usuarios = list(cliente.usuarios_portal.filter(is_active=True))
+    creadas = sum(_crear(u, Notificacion.Tipo.GENERAL, texto, clave) for u in usuarios)
+    destinos = {cliente.email} if cliente.email else {u.email for u in usuarios if u.email}
+    if destinos:
+        enlace = f"{settings.FRONTEND_URL.rstrip('/')}/portal"
+        cuerpo = f"Hola {cliente.nombre},\n\n{texto}\n\nPuede consultarlo en el portal: {enlace}\n\nACOPROHO"
+        try:
+            send_mail(asunto, cuerpo, settings.DEFAULT_FROM_EMAIL, sorted(destinos))
+        except Exception:
+            logger.exception("No se pudo enviar el correo al cliente %s", cliente.pk)
+    return creadas
+
+
+def notificar_despacho_del_cliente(expediente, texto, clave):
+    """Avisa al abogado asignado y al equipo de apoyo que el cliente escribió o subió algo."""
+    destinos = {expediente.abogado_asignado, *expediente.colaboradores.all()}
+    return sum(_crear(u, Notificacion.Tipo.GENERAL, texto, clave) for u in destinos if u is not None)
+
+
 def _nombre(usuario):
     return usuario.get_full_name() or usuario.username
 

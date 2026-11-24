@@ -26,16 +26,18 @@ class PerfilSerializer(serializers.ModelSerializer):
     es_directivo = serializers.SerializerMethodField()
     es_administrador = serializers.SerializerMethodField()
     permisos = serializers.SerializerMethodField()
+    cliente_nombre = serializers.CharField(source="cliente.nombre", read_only=True, default=None)
 
     class Meta:
         model = Usuario
         fields = [
             "id", "username", "email", "first_name", "last_name", "telefono", "rol", "es_socio", "es_directivo",
             "es_administrador", "permisos", "debe_cambiar_password", "autorizacion_datos_pendiente",
+            "cliente", "cliente_nombre",
         ]
         read_only_fields = [
             "id", "username", "rol", "es_socio", "es_directivo", "es_administrador", "permisos",
-            "debe_cambiar_password", "autorizacion_datos_pendiente",
+            "debe_cambiar_password", "autorizacion_datos_pendiente", "cliente", "cliente_nombre",
         ]
 
     def get_permisos(self, obj):
@@ -85,12 +87,13 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
 
     password = serializers.CharField(write_only=True, required=False, style={"input_type": "password"})
     nombre_completo = serializers.SerializerMethodField()
+    cliente_nombre = serializers.CharField(source="cliente.nombre", read_only=True, default=None)
 
     class Meta:
         model = Usuario
         fields = [
             "id", "username", "first_name", "last_name", "email", "telefono", "cedula", "tarjeta_profesional",
-            "rol", "es_socio", "is_active", "password", "nombre_completo", "last_login",
+            "rol", "es_socio", "cliente", "cliente_nombre", "is_active", "password", "nombre_completo", "last_login",
             "debe_cambiar_password", "autorizacion_datos_pendiente", "fecha_autorizacion_datos",
         ]
         read_only_fields = [
@@ -125,6 +128,9 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         inst = self.instance
+        rol = attrs.get("rol", inst.rol if inst else None)
+        if rol != "cliente":
+            attrs["cliente"] = None  # solo el rol Cliente se vincula a una ficha de cliente
         password = attrs.get("password")
         if inst is None and not password:
             raise serializers.ValidationError({"password": "La contraseña es obligatoria al crear un usuario."})

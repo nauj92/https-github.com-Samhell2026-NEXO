@@ -26,6 +26,7 @@ const MODULO_POR_RUTA = [
   ["/citaciones", "documentos"],
   ["/clientes", "clientes"],
   ["/abogados", "usuarios"],
+  ["/portal", "portal"],
   ["/tareas", "tareas"],
   ["/audiencias", "agenda"],
   ["/acuerdos", "finanzas"],
@@ -37,13 +38,15 @@ export const moduloDeRuta = (ruta) => (MODULO_POR_RUTA.find(([p]) => ruta.starts
 // ¿Puede el usuario abrir esta pantalla? Las rutas fuera de la matriz (perfil, notificaciones) son libres.
 export const puedeVerRuta = (perfil, ruta) => {
   const modulo = moduloDeRuta(ruta);
+  // El cliente solo usa su portal (más perfil y notificaciones): el resto del sistema es del despacho
+  if (perfil?.rol === "cliente") return modulo === null || modulo === "portal";
   return modulo === null || puede(perfil, modulo, "V");
 };
 
 // Primera pantalla a la que puede entrar el usuario al iniciar sesión
 export const rutaInicial = (perfil) => {
   if (!perfil) return "/dashboard";
-  if (perfil.rol === "cliente") return "/configuracion";
+  if (perfil.rol === "cliente") return "/portal";
   const orden = ["/dashboard", "/expedientes", "/tareas", "/audiencias", "/demandas", "/clientes", "/acuerdos", "/liquidacion/laboral"];
   return orden.find((r) => puedeVerRuta(perfil, r)) || "/notificaciones";
 };

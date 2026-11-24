@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 class NotificacionViewSet(viewsets.ModelViewSet):
     serializer_class = NotificacionSerializer
+    acceso_cliente = True  # el cliente también ve sus avisos del portal
 
     def get_queryset(self):
         return Notificacion.objects.filter(usuario=self.request.user)

@@ -212,12 +212,41 @@ export default function Expedientes() {
   const [historial, setHistorial] = useState([]);
   const [subiendo, setSubiendo] = useState(false);
   const [errorDoc, setErrorDoc] = useState("");
+  const [mensajes, setMensajes] = useState([]);
+  const [textoMensaje, setTextoMensaje] = useState("");
+  const [errorMensaje, setErrorMensaje] = useState("");
+
+  const handleCompartir = async (doc) => {
+    setErrorDoc("");
+    try {
+      const r = await api.post(`/expedientes/${detalle.id}/documentos/${doc.id}/compartir/`, { compartido: !doc.compartido_cliente });
+      setDocumentos((prev) => prev.map((d) => (d.id === doc.id ? r.data : d)));
+    } catch (err) {
+      setErrorDoc(mensajeError(err, "No se pudo cambiar si el cliente ve el documento."));
+    }
+  };
+
+  const handleEnviarMensaje = async (e) => {
+    e.preventDefault();
+    setErrorMensaje("");
+    try {
+      const r = await api.post("/mensajes/", { expediente: detalle.id, texto: textoMensaje });
+      setMensajes((prev) => [...prev, r.data]);
+      setTextoMensaje("");
+    } catch (err) {
+      setErrorMensaje(mensajeError(err, "No se pudo enviar el mensaje."));
+    }
+  };
 
   const abrirDetalle = (exp) => {
     setDetalle(exp);
     setDocumentos([]);
     setHistorial([]);
     setErrorDoc("");
+    setMensajes([]);
+    setTextoMensaje("");
+    setErrorMensaje("");
+    if (exp.cliente) api.get(`/mensajes/?expediente=${exp.id}`).then((r) => setMensajes(r.data)).catch(() => {});
     api.get(`/expedientes/${exp.id}/documentos/`).then((r) => setDocumentos(r.data)).catch(() => {});
     api.get(`/expedientes/${exp.id}/historial/`).then((r) => setHistorial(r.data)).catch(() => {});
   };
@@ -616,6 +645,8 @@ export default function Expedientes() {
                 <div key={d.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px dashed #e9edf2", fontSize: "13px", gap: "8px" }}>
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
                     <strong>{d.nombre}</strong> · {formatoTamano(d.tamano)}
+                    {d.origen_cliente && <span style={{ marginLeft: "6px", background: "#e3effa", color: "#2a6aa8", borderRadius: "10px", padding: "1px 8px", fontSize: "11px" }}>Del cliente</span>}
+                    {d.compartido_cliente && !d.origen_cliente && <span style={{ marginLeft: "6px", background: "#e2f3e8", color: "#1b8b5e", borderRadius: "10px", padding: "1px 8px", fontSize: "11px" }}>Visible al cliente</span>}
                     <br />
                     <span style={{ color: "#6b7f96" }}>
                       {d.subido_por_nombre || "—"} · {new Date(d.subido_en).toLocaleString("es-CO")}
@@ -623,6 +654,11 @@ export default function Expedientes() {
                   </span>
                   <span style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
                     <button type="button" onClick={() => handleDescargarDocumento(d)} style={{ padding: "4px 10px", borderRadius: "6px", border: "1px solid #d0d9e3", background: "white", cursor: "pointer" }}>Descargar</button>
+                    {permDocs.aprobar && detalle.cliente && !d.origen_cliente && (
+                      <button type="button" onClick={() => handleCompartir(d)} style={{ padding: "4px 10px", borderRadius: "6px", border: "1px solid #d0d9e3", background: "white", cursor: "pointer" }}>
+                        {d.compartido_cliente ? "Ocultar al cliente" : "Compartir con cliente"}
+                      </button>
+                    )}
                     {permDocs.eliminar && <button type="button" onClick={() => handleEliminarDocumento(d)} style={{ padding: "4px 10px", borderRadius: "6px", border: "none", background: "#fde8e8", color: "#c73a3a", cursor: "pointer" }}>Eliminar</button>}
                   </span>
                 </div>
@@ -632,6 +668,26 @@ export default function Expedientes() {
                 <input type="file" onChange={handleSubirDocumento} disabled={subiendo} style={{ display: "none" }} accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt" />
               </label>}
               <p style={{ fontSize: "11px", color: "#6b7f96" }}>PDF, Word, Excel, imágenes o texto. Máximo 5 MB (25 MB si el despacho activó el almacenamiento externo).</p>
+
+              {detalle.cliente && (
+                <>
+                  <h4 style={{ marginTop: "24px", marginBottom: "10px" }}>💬 Mensajes con el cliente</h4>
+                  {mensajes.length === 0 && <p style={{ color: "#6b7f96", fontSize: "13px" }}>Aún no hay mensajes.</p>}
+                  {mensajes.map((m) => (
+                    <div key={m.id} style={{ padding: "6px 10px", margin: "4px 0", borderRadius: "10px", fontSize: "13px", background: m.de_cliente ? "#e3effa" : "#f0f3f8" }}>
+                      <strong>{m.de_cliente ? "Cliente" : m.autor_nombre}</strong> · <span style={{ color: "#6b7f96" }}>{new Date(m.creado_en).toLocaleString("es-CO")}</span>
+                      <div style={{ whiteSpace: "pre-line" }}>{m.texto}</div>
+                    </div>
+                  ))}
+                  {errorMensaje && <p style={{ color: "#c73a3a", fontSize: "13px" }}>{errorMensaje}</p>}
+                  {permiso.crear && (
+                    <form onSubmit={handleEnviarMensaje} style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                      <input value={textoMensaje} onChange={(e) => setTextoMensaje(e.target.value)} placeholder="Escribir al cliente..." maxLength={2000} style={{ flex: 1, padding: "8px 10px", borderRadius: "8px", border: "1px solid #d0d9e3" }} />
+                      <button type="submit" disabled={!textoMensaje.trim()} style={{ padding: "8px 14px", borderRadius: "8px", border: "none", background: "#0a1a2b", color: "white", cursor: "pointer" }}>Enviar</button>
+                    </form>
+                  )}
+                </>
+              )}
 
               <h4 style={{ marginTop: "24px", marginBottom: "10px" }}>🕑 Historial de cambios</h4>
               {historial.length === 0 && <p style={{ color: "#6b7f96", fontSize: "13px" }}>Sin cambios registrados.</p>}

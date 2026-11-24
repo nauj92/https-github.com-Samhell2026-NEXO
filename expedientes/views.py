@@ -19,6 +19,7 @@ from core.permisos import (
     ROL_ABOGADO, ROL_SECRETARIA, EsAdministrador, expedientes_visibles, facturas_visibles, permiso_de,
 )
 from facturacion.models import Factura
+from notificaciones import servicios as avisos
 
 from .historial import historial_de
 from . import almacenamiento, eventos
@@ -65,6 +66,8 @@ class ExpedienteViewSet(EliminarProtegidoMixin, viewsets.ModelViewSet):
     permisos_accion = {
         "documentos": {"GET": ("documentos", "V"), "POST": ("documentos", "C")},
         "documento": {"GET": ("documentos", "V"), "DELETE": ("documentos", "X")},
+        # Compartir con el cliente es una decisión del abogado (letra «A» de documentos)
+        "compartir_documento": ("documentos", "A"),
     }
     mensaje_protegido = (
         "No se puede eliminar el expediente porque tiene facturas asociadas. "
@@ -191,6 +194,34 @@ class ExpedienteViewSet(EliminarProtegidoMixin, viewsets.ModelViewSet):
         respuesta["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(doc.nombre)}"
         respuesta["X-Content-Type-Options"] = "nosniff"
         return respuesta
+
+
+    @action(detail=True, methods=["post"], url_path=r"documentos/(?P<doc_id>[0-9]+)/compartir")
+    def compartir_documento(self, request, pk=None, doc_id=None):
+        """POST {"compartido": true|false}: publica u oculta el documento en el portal del cliente."""
+        expediente = self.get_object()
+        try:
+            doc = expediente.documentos.get(pk=doc_id)
+        except DocumentoExpediente.DoesNotExist:
+            raise NotFound("El documento no existe.")
+        compartir = request.data.get("compartido") in (True, "true", "True", "1", 1)
+        if compartir and expediente.cliente_id is None:
+            raise ValidationError({"detail": "El expediente no tiene cliente asignado."})
+        if doc.compartido_cliente != compartir:
+            doc.compartido_cliente = compartir
+            doc.save(update_fields=["compartido_cliente"])
+            eventos.registrar(
+                expediente, request.user,
+                "Documento compartido con el cliente" if compartir else "Documento ocultado al cliente",
+                [("Documento", "—", doc.nombre)],
+            )
+            if compartir:
+                avisos.notificar_cliente(
+                    expediente.cliente, f"Nuevo documento en su proceso {expediente.numero}",
+                    f"El despacho compartió el documento «{doc.nombre}» en su proceso {expediente.numero}.",
+                    f"documento:{doc.pk}:compartido",
+                )
+        return Response(DocumentoExpedienteSerializer(doc).data)
 
 
 class EtapaProcesoViewSet(viewsets.ModelViewSet):

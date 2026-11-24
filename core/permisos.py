@@ -69,6 +69,8 @@ MATRIZ = {
     "vigilancia": {ROL_ADMINISTRADOR: "VCEX", ROL_ABOGADO: "VCE", ROL_SECRETARIA: "VCE", ROL_ESCRIBIENTE: "V"},
     # Reportes: tablero de resumen
     "reportes": {ROL_ADMINISTRADOR: "V", ROL_ABOGADO: "V", ROL_SECRETARIA: "V"},
+    # Portal del cliente: solo el cliente (ve únicamente lo suyo; ver portal/views.py)
+    "portal": {ROL_CLIENTE: "V"},
     # Auditoría y registros del sistema
     "auditoria": {ROL_ADMINISTRADOR: "V"},
 }

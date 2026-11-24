@@ -18,6 +18,11 @@ class Usuario(AbstractUser):
     telefono = models.CharField(max_length=20, blank=True)
     cedula = models.CharField("cédula", max_length=12, blank=True)
     tarjeta_profesional = models.CharField("tarjeta profesional", max_length=15, blank=True)
+    # Solo para el rol Cliente: la ficha de cliente cuyo proceso puede consultar en el portal.
+    cliente = models.ForeignKey(
+        "clientes.Cliente", on_delete=models.SET_NULL, null=True, blank=True, related_name="usuarios_portal",
+        help_text="Solo para usuarios con rol Cliente: ficha del cliente que verá en el portal.",
+    )
 
     # Primer ingreso: el administrador crea la cuenta con una contraseña temporal; la persona debe cambiarla
     # y autorizar el tratamiento de sus datos personales antes de usar el sistema.

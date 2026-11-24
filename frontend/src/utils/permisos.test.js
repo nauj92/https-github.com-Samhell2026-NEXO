@@ -28,6 +28,10 @@ describe("permisos por rol", () => {
     expect(rutaInicial(admin)).toBe("/dashboard");
     expect(rutaInicial(escribiente)).toBe("/expedientes");
     expect(rutaInicial(dependiente)).toBe("/tareas");
-    expect(rutaInicial(perfil("cliente", {}))).toBe("/configuracion");
+    const cliente = perfil("cliente", { portal: "V", expedientes: "V", clientes: "V" });
+    expect(rutaInicial(cliente)).toBe("/portal");
+    expect(puedeVerRuta(cliente, "/portal")).toBe(true);
+    expect(puedeVerRuta(cliente, "/expedientes")).toBe(false);
+    expect(puedeVerRuta(cliente, "/notificaciones")).toBe(true);
   });
 });

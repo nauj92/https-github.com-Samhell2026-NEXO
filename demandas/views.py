@@ -92,6 +92,13 @@ class AlcanceAbogadoMixin:
         )
         obj.save(update_fields=["aprobacion", "aprobado_por", "aprobado_en", "motivo_devolucion"])
         avisos.notificar_borrador_resuelto(obj, self.etiqueta, request.user, aprobado=True)
+        # Aviso externo: ya con el visto bueno del abogado, el cliente sabe que su proceso avanzó
+        if obj.expediente and obj.expediente.cliente:
+            avisos.notificar_cliente(
+                obj.expediente.cliente, f"Avance en su proceso {obj.expediente.numero}",
+                f"El despacho preparó y aprobó una {self.etiqueta} en su proceso {obj.expediente.numero}.",
+                f"escrito:{self.etiqueta}:{obj.pk}:aprobado",
+            )
         return self._responder(obj)
 
     @action(detail=True, methods=["post"])

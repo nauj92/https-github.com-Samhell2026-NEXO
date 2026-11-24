@@ -112,6 +112,9 @@ class DocumentoExpediente(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="documentos_subidos"
     )
     subido_en = models.DateTimeField(auto_now_add=True)
+    # Portal del cliente: el abogado decide qué documentos ve el cliente; los que sube el cliente quedan marcados.
+    compartido_cliente = models.BooleanField(default=False)
+    origen_cliente = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.expediente.numero} - {self.nombre}"
