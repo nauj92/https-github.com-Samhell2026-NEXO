@@ -117,7 +117,6 @@ export default function Sidebar() {
         const p = response.data;
         // Mientras no cambie la contraseña temporal y autorice el uso de sus datos, solo ve esa pantalla
         if (p.debe_cambiar_password || p.autorizacion_datos_pendiente) navigate("/primer-ingreso", { replace: true });
-        else if (p.rol === "cliente" && location.pathname !== "/configuracion") navigate("/configuracion", { replace: true });
         else if (!puedeVerRuta(p, location.pathname)) navigate(rutaInicial(p), { replace: true });
       })
       .catch(() => {});
@@ -215,7 +214,7 @@ export default function Sidebar() {
       )}
 
       <nav style={{ flex: 1 }}>
-        {perfil && perfil.rol !== "cliente" && filtrarMenu(menu, perfil).map((item) => (
+        {perfil && filtrarMenu(menu, perfil).map((item) => (
           <ElementoMenu key={item.id || item.to} item={item} nivel={0} abiertos={abiertos} alternar={alternar} ruta={location.pathname} compacto={compacto} expandir={() => cambiarCompacto(false)} />
         ))}
       </nav>
