@@ -27,6 +27,7 @@ const MODULO_POR_RUTA = [
   ["/clientes", "clientes"],
   ["/abogados", "usuarios"],
   ["/portal", "portal"],
+  ["/auditoria", "auditoria"],
   ["/tareas", "tareas"],
   ["/audiencias", "agenda"],
   ["/acuerdos", "finanzas"],

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Scale, LogOut, Gavel, Calculator, Eye, FileText, ChevronDown, ChevronRight, Briefcase, Bell,
-  FileSignature, Send, Users, ListChecks, Home, CalendarDays, Contact, LayoutDashboard, Wallet, ChevronsLeft, ChevronsRight,
+  FileSignature, Send, Users, ListChecks, Home, ShieldCheck, CalendarDays, Contact, LayoutDashboard, Wallet, ChevronsLeft, ChevronsRight,
 } from "lucide-react";
 import api from "../api";
 import BotonTema from "./BotonTema";
@@ -22,6 +22,7 @@ const menu = [
   },
   { to: "/portal", label: "Mi portal", Icon: Home },
   { to: "/tareas", label: "Mis tareas", Icon: ListChecks },
+  { to: "/auditoria", label: "Auditoría", Icon: ShieldCheck },
   { to: "/vigilancia", label: "Vigilancia judicial", Icon: Eye },
   {
     id: "administracion", label: "Administración judicial", Icon: Briefcase,

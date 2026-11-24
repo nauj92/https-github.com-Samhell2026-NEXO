@@ -12,10 +12,12 @@ from rest_framework.views import APIView
 from acuerdos.models import AcuerdoPago
 from audiencias.models import Audiencia
 from clientes.models import Cliente
-from core.permisos import es_administrador, es_directivo, expedientes_visibles
+from core.permisos import es_administrador, es_directivo, expedientes_visibles, puede
 from core.plazos import sumar_dias_habiles
-from demandas.models import ContestacionDemanda, Demanda
+from demandas.models import Citacion, ContestacionDemanda, Demanda
 from expedientes.models import EtapaProceso
+from tareas.alcance import tareas_visibles
+from tareas.models import Tarea
 
 MAX_ITEMS = 8
 
@@ -49,6 +51,35 @@ def _alcance(qs, usuario):
     if es_directivo(usuario):
         return qs
     return qs.filter(Q(abogado_responsable=usuario) | Q(expediente__in=expedientes_visibles(usuario)))
+
+
+def _resumen_tareas(usuario, hoy):
+    """Tareas visibles para el usuario por estado; las vencidas son las no realizadas con fecha límite pasada."""
+    if not puede(usuario, "tareas", "V"):
+        return None
+    tareas = tareas_visibles(usuario)
+    por_estado = {t["estado"]: t["total"] for t in tareas.values("estado").annotate(total=Count("id"))}
+    vencidas = tareas.exclude(estado=Tarea.Estado.REALIZADA).filter(fecha_limite__lt=hoy).count()
+    return {
+        "pendientes": por_estado.get("pendiente", 0),
+        "en_curso": por_estado.get("en_curso", 0),
+        "realizadas": por_estado.get("realizada", 0),
+        "vencidas": vencidas,
+        "mias_abiertas": tareas.filter(asignado_a=usuario).exclude(estado=Tarea.Estado.REALIZADA).count(),
+    }
+
+
+def _resumen_aprobaciones(usuario):
+    """Escritos por aprobar (quien aprueba) o devueltos para ajustes (quien los prepara). None si no aplica."""
+    if not puede(usuario, "documentos", "E"):
+        return None
+    total = {"pendientes_de_aprobar": 0, "devueltos": 0}
+    for modelo in (Demanda, ContestacionDemanda, Citacion):
+        qs = _alcance(modelo.objects.all(), usuario)
+        total["pendientes_de_aprobar"] += qs.filter(aprobacion="pendiente").count()
+        total["devueltos"] += qs.filter(aprobacion="devuelto").count()
+    total["aprueba"] = puede(usuario, "documentos", "A")
+    return total
 
 
 class DashboardResumenView(APIView):
@@ -203,6 +234,12 @@ class DashboardResumenView(APIView):
             "clientes_total": Cliente.objects.count(),
             "acuerdos_pago": acuerdos_resumen,
         }
+        # Tareas y aprobaciones (según el rol)
+        resumen["tareas"] = _resumen_tareas(usuario, hoy)
+        resumen["aprobaciones"] = _resumen_aprobaciones(usuario)
+        if es_administrador(usuario):
+            por_rol = get_user_model().objects.filter(is_active=True).values("rol").annotate(total=Count("id"))
+            resumen["usuarios_por_rol"] = {r["rol"]: r["total"] for r in por_rol}
         if directivo:
             resumen["abogados_total"] = get_user_model().objects.filter(is_active=True).count()
             totales["abogados"] = resumen["abogados_total"]

@@ -155,6 +155,31 @@ export default function Dashboard() {
               <Tarjeta titulo="Expedientes (casos)" to="/expedientes" valor={d.totales.expedientes} Icono={Briefcase} color="#c0504d" />
             </div>
 
+            {(d.tareas || d.aprobaciones || d.usuarios_por_rol) && (
+              <Panel color="#2e8b6e" id="trabajo" titulo="Tareas y aprobaciones" resumen={d.tareas ? `${d.tareas.pendientes + d.tareas.en_curso} abierta(s)${d.tareas.vencidas ? ` · ${d.tareas.vencidas} vencida(s)` : ""}` : ""} abierto={abierto("trabajo")} alternar={alternar}>
+                {d.tareas && (
+                  <p style={{ fontSize: "14px", margin: "4px 0" }}>
+                    Tareas: <strong>{d.tareas.pendientes}</strong> pendientes · <strong>{d.tareas.en_curso}</strong> en curso · <strong>{d.tareas.realizadas}</strong> realizadas
+                    {d.tareas.vencidas > 0 && <span style={{ color: "#c73a3a", fontWeight: 700 }}> · {d.tareas.vencidas} vencida(s)</span>}
+                    {" "}(a su cargo: {d.tareas.mias_abiertas})
+                  </p>
+                )}
+                {d.aprobaciones && (
+                  <p style={{ fontSize: "14px", margin: "4px 0" }}>
+                    {d.aprobaciones.aprueba
+                      ? <>Escritos por aprobar: <strong>{d.aprobaciones.pendientes_de_aprobar}</strong></>
+                      : <>Escritos enviados a aprobación: <strong>{d.aprobaciones.pendientes_de_aprobar}</strong> · devueltos para ajustar: <strong>{d.aprobaciones.devueltos}</strong></>}
+                  </p>
+                )}
+                {d.usuarios_por_rol && (
+                  <p style={{ fontSize: "14px", margin: "4px 0" }}>
+                    Usuarios activos por rol: {Object.entries(d.usuarios_por_rol).map(([rol, n]) => `${rol}: ${n}`).join(" · ")}
+                  </p>
+                )}
+                <Link to="/tareas" style={{ fontSize: "13px", fontWeight: 600 }}>Ir a tareas</Link>
+              </Panel>
+            )}
+
             <Panel color="#2f5d8a" id="ramas" titulo="Casos por rama del derecho" resumen={`${d.totales.expedientes} caso(s)`} abierto={abierto("ramas")} alternar={alternar}>
               {d.casos_por_rama.length === 0 && <div style={{ color: "#8899b4", fontSize: "14px" }}>Aún no hay casos registrados.</div>}
               {d.casos_por_rama.map((r) => (

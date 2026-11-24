@@ -25,6 +25,8 @@ describe("permisos por rol", () => {
   });
 
   it("elige la pantalla inicial", () => {
+    expect(puedeVerRuta(perfil("administrador", { auditoria: "V" }), "/auditoria")).toBe(true);
+    expect(puedeVerRuta(escribiente, "/auditoria")).toBe(false);
     expect(rutaInicial(admin)).toBe("/dashboard");
     expect(rutaInicial(escribiente)).toBe("/expedientes");
     expect(rutaInicial(dependiente)).toBe("/tareas");

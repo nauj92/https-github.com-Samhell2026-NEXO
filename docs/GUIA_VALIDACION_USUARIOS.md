@@ -9,6 +9,8 @@ Objetivo: comprobar con abogados y secretarios de juzgado que ACOPROHO sirve par
 | Abogado litigante | 2 a 3 |
 | Secretario(a) o escribiente de juzgado | 1 a 2 |
 | Socio director o administrador del despacho | 1 |
+| Dependiente (mensajero o auxiliar de trámites) | 1 |
+| Cliente (persona ajena al sistema) | 1 |
 
 Con 5 a 6 personas se detecta la gran mayoría de los problemas de uso.
 
@@ -39,6 +41,12 @@ Con 5 a 6 personas se detecta la gran mayoría de los problemas de uso.
 | 7 | Programar una audiencia y encontrarla en el Dashboard | La ve en "Audiencias y diligencias" |
 | 8 | Calcular un término en días hábiles que cruce un festivo | Confirma que la fecha es correcta |
 | 9 | (Solo administrador) Crear un usuario y verificar el estado "Primer ingreso" | Entiende si la persona ya completó su ingreso |
+| 10 | (Abogado) Crear una tarea para el dependiente, con fecha límite | El dependiente la ve en "Mis tareas" |
+| 11 | (Dependiente) Marcar la tarea como realizada y subir una foto del cargo | La tarea queda realizada y el abogado ve el comprobante |
+| 12 | (Escribiente) Crear un borrador de demanda y enviarlo a aprobación; (Abogado) aprobarlo o devolverlo con motivo | El estado cambia y quien envió recibe el aviso |
+| 13 | (Administrador) Vincular una cuenta de cliente a su ficha; (Abogado) compartir un documento | El cliente ve el documento en "Mi portal" |
+| 14 | (Cliente) Revisar su proceso, escribir un mensaje y subir un documento | El abogado recibe el aviso |
+| 15 | (Administrador) Abrir "Auditoría" y buscar lo que hizo un usuario | Encuentra la acción en la lista |
 
 ## 5. Hoja de observación (una por persona)
 
@@ -53,6 +61,12 @@ Con 5 a 6 personas se detecta la gran mayoría de los problemas de uso.
 | 7 | | | | |
 | 8 | | | | |
 | 9 | | | | |
+| 10 | | | | |
+| 11 | | | | |
+| 12 | | | | |
+| 13 | | | | |
+| 14 | | | | |
+| 15 | | | | |
 
 ## 6. Cuestionario (1 = totalmente en desacuerdo, 5 = totalmente de acuerdo)
 
@@ -94,4 +108,6 @@ Criterio de gravedad: **Alta** impide terminar la tarea; **Media** la retrasa o 
 
 - Texto de la autorización de tratamiento de datos (lo debe revisar el asesor jurídico).
 - Si los términos del despacho deben descontar la vacancia judicial (`PLAZOS_CON_VACANCIA`).
-- Qué debe poder ver el rol Cliente (hoy solo su perfil).
+- Qué debe poder ver el rol Cliente en el portal (hoy: estado del proceso, etapas, audiencias, documentos compartidos por el abogado, mensajes y facturas).
+- Si la secretaria puede modificar un escrito ya aprobado (hoy, al modificarlo, vuelve a borrador y requiere nueva aprobación).
+- Si el escribiente y el dependiente pueden cerrar tareas (hoy sí: solo cambian el estado y la observación).

@@ -507,6 +507,15 @@ Aplicación: `http://localhost:5173/`
 | `/api/contestaciones/` | GET, POST, PATCH, DELETE | B1 · Contestación de demanda |
 | `/api/contestaciones/{id}/generar-borrador/` | GET | Borrador de la contestación |
 | `/api/citaciones/` | GET, POST, PATCH, DELETE | Citaciones (art. 291) y avisos (art. 292) |
+| `/api/tareas/` | GET, POST, PATCH, DELETE | Tareas (`?estado=`, `?mias=1`, `?expediente=`); `GET, POST /{id}/comprobantes/` y `GET, DELETE /{id}/comprobantes/{id}/` |
+| `/api/demandas/{id}/enviar/`, `aprobar/`, `devolver/` | POST | Flujo de aprobación (igual en `/api/contestaciones/` y `/api/citaciones/`); `devolver` pide `{motivo}` |
+| `/api/expedientes/{id}/documentos/{doc_id}/compartir/` | POST | Publica u oculta un documento en el portal del cliente (solo abogado) |
+| `/api/mensajes/` | GET, POST | Conversación con el cliente (`?expediente=`) |
+| `/api/portal/expedientes/` | GET | Procesos del cliente (portal) |
+| `/api/portal/expedientes/{id}/documentos/` | GET, POST | Documentos compartidos / subir un documento al despacho |
+| `/api/portal/expedientes/{id}/mensajes/` | GET, POST | Mensajes del cliente con el despacho |
+| `/api/portal/facturas/` | GET | Facturas del cliente |
+| `/api/auditoria/` | GET | Actividad e inicios de sesión (`?usuario=`, `?desde=`, `?hasta=`); solo administrador |
 | `/api/password-reset/` | POST | Solicita el enlace de recuperación |
 | `/api/password-reset/confirmar/` | POST | Establece la contraseña nueva |
 
@@ -556,12 +565,22 @@ Los documentos antiguos siguen descargándose aunque no se migren.
 
 | Rol | Alcance |
 |---|---|
-| `administrador` | Acceso total al sistema. Es el único que crea y modifica usuarios |
-| `socio_director` | Acceso total al sistema; consulta los usuarios pero no los crea |
-| `abogado` | Solo sus expedientes asignados |
-| `secretario_juridico` | Solo expedientes asignados |
-| `escribiente` | Solo expedientes asignados |
-| `cliente` | Solo su perfil (cambio de contraseña y autorización de datos); sin acceso a los procesos por ahora |
+| `administrador` | Gestiona usuarios, roles, finanzas y la auditoría; ve todos los expedientes. No aprueba trabajo jurídico |
+| `abogado` | Sus expedientes asignados (el abogado marcado como **socio** ve todos). Aprueba escritos y decide qué se comparte con el cliente |
+| `secretario_juridico` (Secretaria) | Los expedientes donde está en el equipo de apoyo; prepara escritos y asigna tareas |
+| `escribiente` | Los expedientes donde está en el equipo de apoyo; redacta borradores que el abogado aprueba |
+| `dependiente` | Solo sus tareas («Mis tareas»): marca avance y sube comprobantes o fotos de cargo |
+| `cliente` | Portal «Mi portal»: solo lo suyo (proceso, documentos compartidos, mensajes y facturas) |
+
+Los permisos por módulo (Ver, Crear, Editar, Eliminar, Aprobar) están en `core/permisos.py` (`MATRIZ`) y se aplican en el servidor; el menú solo refleja lo que cada rol puede usar.
+
+**Flujo de aprobación:** el escribiente o la secretaria preparan demandas, contestaciones y citaciones como *borrador* y los envían a aprobación; el abogado los aprueba o los devuelve con el motivo. Un escrito no avanza (radicada, presentada, enviada…) hasta ser aprobado, y al aprobarlo el cliente recibe un aviso.
+
+**Tareas:** el personal jurídico asigna tareas a otras personas del despacho (con fecha límite y expediente); el asignado las marca como realizadas y adjunta comprobantes. Hay avisos de asignación, cumplimiento y vencimiento.
+
+**Portal del cliente:** el administrador vincula el usuario con rol Cliente a su ficha de cliente. El cliente ve el estado y las audiencias de sus procesos, los documentos que el abogado le comparte, puede subir los suyos, escribir al despacho y consultar sus facturas. El despacho lo avisa por el portal y por correo.
+
+**Auditoría:** el administrador consulta, solo en lectura, quién hizo qué y cuándo en los expedientes y los inicios de sesión.
 
 **Alta de usuarios:** el administrador crea la cuenta con una contraseña temporal y el sistema envía un correo de bienvenida. En su primer ingreso la persona debe cambiar la contraseña y autorizar el tratamiento de sus datos personales (Ley 1581 de 2012); hasta entonces el servidor rechaza cualquier otra petición.
 
@@ -611,6 +630,11 @@ La aplicación está desplegada en [Render](https://render.com) (plan gratuito) 
 - [x] Historial de cambios completo: documentos, etapas y acuerdos de pago, además de los campos del expediente
 - [x] Acuerdos de pago con cuotas, saldo, mora, y presencia en el Dashboard y en el historial
 - [x] Dashboard con fecha y hora en vivo
+- [x] Roles y permisos según la matriz del ingeniero (6 roles, alcance por expediente, permisos V/C/E/X/A)
+- [x] Tareas y flujo del dependiente, con comprobantes y avisos
+- [x] Aprobación del abogado para demandas, contestaciones y citaciones
+- [x] Portal del cliente (procesos, documentos compartidos, mensajes, facturas) y avisos por correo
+- [x] Auditoría para el administrador y panel de tareas/aprobaciones en el Dashboard
 - [ ] Validación con usuarios del oficio (abogados / secretarios de juzgado): guía y formatos listos en `docs/GUIA_VALIDACION_USUARIOS.md`
 
 ---

@@ -2,7 +2,6 @@ import os
 from urllib.parse import quote
 
 from django.db import transaction
-from django.db.models import Q
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import status, viewsets
@@ -11,11 +10,12 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
-from core.permisos import MENSAJE_SIN_PERMISO, es_directivo, expedientes_visibles, puede
+from core.permisos import MENSAJE_SIN_PERMISO, puede
 from expedientes import almacenamiento, eventos
 from expedientes.models import DocumentoExpediente
 from notificaciones import servicios as avisos
 
+from .alcance import tareas_visibles
 from .models import ComprobanteTarea, Tarea
 from .serializers import TareaSerializer
 
@@ -37,14 +37,9 @@ class TareaViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         usuario = self.request.user
-        qs = Tarea.objects.select_related("expediente", "asignado_a", "creado_por").prefetch_related(
+        qs = tareas_visibles(usuario).select_related("expediente", "asignado_a", "creado_por").prefetch_related(
             "comprobantes__subido_por"
         )
-        if not es_directivo(usuario):
-            filtro = Q(asignado_a=usuario) | Q(creado_por=usuario)
-            if puede(usuario, "tareas", "C"):
-                filtro |= Q(expediente__in=expedientes_visibles(usuario))
-            qs = qs.filter(filtro)
         params = self.request.query_params
         if params.get("estado") in Tarea.Estado.values:
             qs = qs.filter(estado=params["estado"])
