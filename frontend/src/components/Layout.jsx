@@ -21,7 +21,7 @@ export default function Layout({ children }) {
           <Menu size={22} />
         </button>
         <Scale size={20} color="#d4a743" />
-        <span>ERP OPERADOR JUDICIAL</span>
+        <span>ACOPROHO</span>
       </div>
 
       {abierto && <div className="menu-fondo" onClick={() => setAbierto(false)} />}

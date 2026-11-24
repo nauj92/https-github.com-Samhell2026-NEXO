@@ -199,7 +199,7 @@ export default function Sidebar() {
         }}
       >
         <Scale size={24} color={COLOR.acento} style={{ flexShrink: 0 }} />
-        {!compacto && <span style={{ flex: 1 }}>ERP OPERADOR JUDICIAL</span>}
+        {!compacto && <span style={{ flex: 1 }}>ACOPROHO</span>}
       </div>
 
       {!esMovil && (
