@@ -35,5 +35,6 @@ describe("permisos por rol", () => {
     expect(puedeVerRuta(cliente, "/portal")).toBe(true);
     expect(puedeVerRuta(cliente, "/expedientes")).toBe(false);
     expect(puedeVerRuta(cliente, "/notificaciones")).toBe(true);
+    expect(puedeVerRuta(perfil("administrador", { portal: "V" }), "/portal")).toBe(false);
   });
 });

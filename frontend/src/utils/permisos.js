@@ -41,6 +41,7 @@ export const puedeVerRuta = (perfil, ruta) => {
   const modulo = moduloDeRuta(ruta);
   // El cliente solo usa su portal (más perfil y notificaciones): el resto del sistema es del despacho
   if (perfil?.rol === "cliente") return modulo === null || modulo === "portal";
+  if (modulo === "portal") return false; // el portal es solo del cliente (aunque un superusuario tenga todos los permisos)
   return modulo === null || puede(perfil, modulo, "V");
 };
 
